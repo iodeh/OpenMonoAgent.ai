@@ -151,6 +151,36 @@ public sealed class ConversationLoop : IDisposable
         {
             ct.ThrowIfCancellationRequested();
 
+            if (i > 0)
+            {
+                var iterPromptTokens = _session.Meta.TokenTracker?.LastPromptTokens ?? 0;
+                if (_checkpointer.NeedsCheckpoint(_session, iterPromptTokens))
+                {
+                    _output.WriteInfo("Context window approaching limit. Creating checkpoint...");
+                    _output.WriteDebug($"[Checkpoint] Triggered mid-turn — messages={_session.Messages.Count}");
+                    var cpSw = Stopwatch.StartNew();
+                    var entry = await _checkpointer.CreateCheckpointAsync(_session, ct);
+                    cpSw.Stop();
+                    _output.WriteInfo($"Checkpoint #{_session.Checkpoints.Count} stored — {entry.MessagesCompressed} messages compressed in {cpSw.Elapsed.TotalSeconds:F1}s.");
+                    _output.WriteDebug($"[Checkpoint] Done — effective window={_checkpointer.BuildContextWindow(_session).Count} messages");
+                    i = -1; continue;
+                }
+                else if (_compactor.NeedsCompaction(_checkpointer.BuildContextWindow(_session), iterPromptTokens))
+                {
+                    _output.WriteInfo("Context window approaching limit. Compacting conversation...");
+                    _output.WriteDebug($"[Compact] Triggered mid-turn — messages={_session.Messages.Count}");
+                    var compactSw = Stopwatch.StartNew();
+                    var compacted = await _compactor.CompactAsync(_session, ct);
+                    compactSw.Stop();
+                    _session.Messages.Clear();
+                    foreach (var msg in compacted.Messages)
+                        _session.AddMessage(msg);
+                    _output.WriteInfo($"Compacted to {_session.Messages.Count} messages in {compactSw.Elapsed.TotalSeconds:F1}s.");
+                    _output.WriteDebug($"[Compact] Done — {_session.Messages.Count} messages remaining");
+                    i = -1; continue;
+                }
+            }
+
             if (i == maxIterations - 2)
             {
                 _session.AddMessage(new Message
