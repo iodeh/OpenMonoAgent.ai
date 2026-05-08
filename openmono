@@ -294,6 +294,7 @@ cmd_setup() {
     if [ "$_OS" = "Linux" ]; then
         echo -e "      ${BOLD}newgrp docker${NC}     # Activate docker group (Linux only)"
     fi
+    echo -e "      ${BOLD}source ~/.bashrc${NC}  # Reload shell config (bash)"
     echo -e "      ${BOLD}exec \$SHELL${NC}       # Reload shell"
     echo ""
     echo "  Full help: openmono --help"
