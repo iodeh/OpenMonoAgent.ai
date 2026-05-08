@@ -17,6 +17,12 @@ set -euo pipefail
 #   OPENMONO_CPU=1        Force CPU mode (removes any GPU override)
 #   OPENMONO_VERBOSE=1    Show detailed command output
 #   LLAMA_PORT=7474       llama-server host port (default 7474)
+#
+# Dev/testing only (not user-facing):
+#   OPENMONO_MODEL_MIRROR=http://192.168.x.x:8080
+#                         Override the HuggingFace base URL for model downloads.
+#                         The path and filename are preserved; only the host is
+#                         swapped.  Leave unset for normal HuggingFace downloads.
 # ──────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -246,6 +252,12 @@ if [ "$OPENMONO_ROLE" != "agent" ]; then
         MODEL_NAME="qwen3.6-35b-a3b-ud-q4_k_xl.gguf"
         MODEL_URL="https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
         next_step "Downloading Qwen3.6-35B-A3B model (~17.6 GB) [CPU]"
+    fi
+
+    # Dev override: fetch from local mirror at http://<host>/models/<filename>
+    if [ -n "${OPENMONO_MODEL_MIRROR:-}" ]; then
+        MODEL_URL="${OPENMONO_MODEL_MIRROR%/}/models/${MODEL_NAME}"
+        detail "Model mirror active: $MODEL_URL"
     fi
 
     MODEL_FILE="$MODEL_DIR/$MODEL_NAME"
