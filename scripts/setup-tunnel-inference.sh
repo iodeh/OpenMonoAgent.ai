@@ -424,9 +424,9 @@ fi
 # ── Restart llama-server so it picks up the new API key ──────────────
 
 if [[ "$NATIVE_INFERENCE" == "true" ]]; then
-    # macOS native: source llama-native.sh and use native restart
+    # macOS native: source inference.sh and use native restart
     # shellcheck source=/dev/null
-    source "$REPO_DIR/scripts/llama-native.sh" 2>/dev/null || true
+    source "$REPO_DIR/scripts/macos/inference.sh" 2>/dev/null || true
     if command -v native_cmd_restart &>/dev/null; then
         info "Restarting native llama-server with new API key..."
         native_cmd_restart || warn "Failed to restart llama-server"

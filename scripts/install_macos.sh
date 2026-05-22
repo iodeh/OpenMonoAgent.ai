@@ -516,7 +516,7 @@ fi
 if [ "$OPENMONO_ROLE" != "agent" ]; then
     next_step "Starting llama-server (Metal)"
 
-    # Use openmono start to launch llama-server via llama-native.sh
+    # Use openmono start to launch llama-server via scripts/macos/inference.sh
     # This ensures consistency between install and runtime startup paths.
     export LLAMA_PORT="${LLAMA_PORT:-7474}"
     if ! "$INSTALL_DIR/openmono" start; then
