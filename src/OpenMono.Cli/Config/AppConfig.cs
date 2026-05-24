@@ -9,6 +9,7 @@ public sealed class AppConfig
     public PermissionConfig Permissions { get; set; } = new();
     public HookConfig Hooks { get; set; } = new();
     public PlaybookConfig Playbooks { get; set; } = new();
+    public AgentConfig Agents { get; set; } = new();
     public Dictionary<string, ProviderSettings> Providers { get; set; } = [];
     public Dictionary<string, ModelPresetSettings> ModelPresets { get; set; } = [];
     public Dictionary<string, McpServerSettings> McpServers { get; set; } = [];
@@ -110,4 +111,10 @@ public sealed class HookCondition
 public sealed class PlaybookConfig
 {
     public List<string> Paths { get; set; } = [".openmono/playbooks/", "~/.openmono/playbooks/"];
+}
+
+public sealed class AgentConfig
+{
+    public int MaxConcurrentAgents { get; set; } = 1;
+    public int MaxNestingDepth { get; set; } = 3;
 }
