@@ -25,6 +25,18 @@ Token generation speed is memory-bandwidth bound — the bottleneck is how fast 
 
 Short version: **dense models are fast on GPU, MoE models are fast on CPU.**
 
+### Apple Silicon (Metal)
+
+On macOS the model runs natively against the Metal GPU and unified memory — there's no separate "VRAM vs RAM" split, so the MoE model is the right choice on high-memory Macs. The installer picks the tier from unified memory size:
+
+| Unified memory | Model | Type | Accuracy |
+|----------------|-------|------|----------|
+| 48 GB+ | Qwen3.6-35B-A3B-UD-Q4_K_XL | MoE | Full |
+| 32 GB | Qwen3.5-9B-Q4_K_M | Dense | Lower |
+| 16 GB | Qwen3.5-9B-Q4_K_M | Dense | Lower |
+
+The 35B-A3B MoE activates only ~3B parameters per token, so on a high-bandwidth Apple Silicon chip it hits the same usable-to-fast range as a Linux GPU while keeping full accuracy. 16 GB is the minimum for native inference; below that, use the agent role and a remote inference box.
+
 ---
 
 ## Why Qwen3.6?
@@ -69,6 +81,16 @@ Token generation is memory-bandwidth bound — **RAM channel count matters as mu
 | Ryzen 9 7940HS | DDR5 5600, dual-channel | ~89 GB/s | ~20 |
 
 > Halving RAM channels halves throughput. Always fill both DIMM slots.
+
+### Apple Silicon — Qwen3.6-35B-A3B-UD-Q4_K_XL (192K context, Metal)
+
+Apple Silicon's unified memory has far higher bandwidth than a desktop CPU's DDR5, so the same MoE model that runs at ~20 tok/s on a NUC reaches GPU-class speeds here.
+
+| Hardware | Unified memory | Bandwidth | tok/s |
+|----------|----------------|-----------|-------|
+| M5 Pro | 64 GB | ~307 GB/s | ~45–48 |
+
+> Speed scales with memory bandwidth. The 48 GB+ tier runs the full-accuracy 35B-A3B model; 16–32 GB Macs fall back to the 9B dense model.
 
 ### What the speeds feel like
 
