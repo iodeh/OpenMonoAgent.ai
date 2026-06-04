@@ -250,8 +250,6 @@ cmd_setup_search() {
     _sync_agent_web_config "$gw_port"
 
     ok "SearXNG installed — WebSearch now routes through the gateway"
-    echo ""
-    echo "  Dual-box: agent boxes pointed at this relay pick it up automatically."
 }
 
 cmd_setup_scraper() {
@@ -275,8 +273,6 @@ cmd_setup_scraper() {
     _sync_agent_web_config "$gw_port"
 
     ok "Scrapling installed — WebFetch now routes through the gateway"
-    echo ""
-    echo "  Dual-box: agent boxes pointed at this relay pick it up automatically."
 }
 
 # Offered at the end of a fresh full/inference install. Skipped when stdin is
@@ -532,6 +528,43 @@ cmd_setup() {
     INSTALL_DIR="${INSTALL_DIR:-$HOME/openmono.ai}"
     LLAMA_PORT="${LLAMA_PORT:-7474}"
 
+    # Initialize settings.json with role-appropriate defaults if it doesn't exist.
+    # Must run before prompt_optional_services: the gateway setup writes
+    # web.gateway here via cmd_config, and this block only seeds defaults when the
+    # file is still absent.
+    local settings_dir="$HOME/.openmono"
+    local settings_file="$settings_dir/settings.json"
+    mkdir -p "$settings_dir"
+    if [[ ! -f "$settings_file" ]]; then
+        if [[ "${OPENMONO_ROLE:-}" == "agent" ]]; then
+            # Agent-only: leave endpoint empty (user must configure a remote server)
+            cat > "$settings_file" <<'EOF'
+{
+  "llm": {
+    "endpoint": "",
+    "api_key": ""
+  }
+}
+EOF
+            detail "Created $settings_file for agent-only role (configure endpoint with: openmono config set llm.endpoint <url>)"
+        else
+            # Full/inference roles: default to localhost (install_macos.sh will override on macOS)
+            cat > "$settings_file" <<'EOF'
+{
+  "llm": {
+    "endpoint": "http://localhost:7474",
+    "api_key": ""
+  }
+}
+EOF
+            detail "Created $settings_file with defaults"
+        fi
+    fi
+
+    # Offer the optional web services (inference/full roles only). Runs before
+    # the completion banner so "Setup Complete" is the last thing the user sees.
+    prompt_optional_services
+
     # Print role-specific setup complete message
     echo ""
     printf "${BLUE}%s${NC}\n" "$(printf '─%.0s' $(seq 1 60))"
@@ -611,39 +644,6 @@ cmd_setup() {
     printf "${BLUE}%s${NC}\n" "$(printf '─%.0s' $(seq 1 60))"
     echo ""
     show_log_location
-
-    # Initialize settings.json with role-appropriate defaults if it doesn't exist
-    local settings_dir="$HOME/.openmono"
-    local settings_file="$settings_dir/settings.json"
-    mkdir -p "$settings_dir"
-    if [[ ! -f "$settings_file" ]]; then
-        if [[ "${OPENMONO_ROLE:-}" == "agent" ]]; then
-            # Agent-only: leave endpoint empty (user must configure a remote server)
-            cat > "$settings_file" <<'EOF'
-{
-  "llm": {
-    "endpoint": "",
-    "api_key": ""
-  }
-}
-EOF
-            detail "Created $settings_file for agent-only role (configure endpoint with: openmono config set llm.endpoint <url>)"
-        else
-            # Full/inference roles: default to localhost (install_macos.sh will override on macOS)
-            cat > "$settings_file" <<'EOF'
-{
-  "llm": {
-    "endpoint": "http://localhost:7474",
-    "api_key": ""
-  }
-}
-EOF
-            detail "Created $settings_file with defaults"
-        fi
-    fi
-
-    # Offer the optional web services (inference/full roles only)
-    prompt_optional_services
 
     # Clear saved setup preferences so next setup starts fresh
     rm -f "$HOME/.openmono/.setup_prefs"
