@@ -152,18 +152,36 @@ _apply_llama_key_restart() {
     fi
 }
 
-# Bring up whichever web services are recorded as installed (used by cmd_start
-# and after 'openmono stop', which tears the whole stack down).
+# Bring up the gateway + whichever web services are installed (used by cmd_start
+# and after 'openmono stop', which tears the whole stack down). Caddy is named
+# explicitly so llama-server (also in the server profile) isn't touched here.
 _start_web_services() {
-    local s c profiles=()
-    s="$(_env_get WEB_SEARCH_ENABLED)"; c="$(_env_get WEB_SCRAPE_ENABLED)"
-    [[ "$s" == "true" ]] && profiles+=(--profile search)
-    [[ "$c" == "true" ]] && profiles+=(--profile scraper)
-    [[ ${#profiles[@]} -eq 0 ]] && return 0
+    [[ "$(_env_get GATEWAY_ENABLED)" == "true" ]] || return 0
     _ensure_docker
-    info "Starting web services (gateway${s:+ + search}${c:+ + scraper})..."
-    (cd "$DOCKER_DIR" && docker compose "${profiles[@]}" up -d) || \
-        warn "Failed to start web services. Check: docker compose ps"
+    local profiles=(--profile server) names=(caddy)
+    [[ "$(_env_get WEB_SEARCH_ENABLED)" == "true" ]] && { profiles+=(--profile search); names+=(searxng); }
+    [[ "$(_env_get WEB_SCRAPE_ENABLED)" == "true" ]] && { profiles+=(--profile scraper); names+=(scrapling); }
+    info "Starting gateway (${names[*]})..."
+    (cd "$DOCKER_DIR" && docker compose "${profiles[@]}" up -d "${names[@]}") || \
+        warn "Failed to start gateway services. Check: docker compose ps"
+}
+
+# Install/refresh the Caddy gateway baseline — the single front door the frpc
+# tunnel routes through, whether or not SearXNG/Scrapling are added.
+_setup_gateway() {
+    _ensure_docker
+    info "Setting up the Caddy gateway..."
+    _ensure_llama_key >/dev/null
+    [[ "$NATIVE_INFERENCE" == "true" ]] && _env_set LLAMA_UPSTREAM "host.docker.internal:7474"
+    _env_set GATEWAY_ENABLED true
+    (cd "$DOCKER_DIR" && docker compose --profile server up -d caddy) || {
+        err "Failed to start the gateway. Check: docker compose ps"; return 1
+    }
+    _apply_llama_key_restart
+    local gw_port; gw_port="$(_env_get GATEWAY_PORT)"; gw_port="${gw_port:-7480}"
+    _retarget_tunnel_to_gateway "$gw_port"
+    _sync_agent_web_config "$gw_port"
+    ok "Caddy gateway running on port ${gw_port}"
 }
 
 # Mirror the server-side registry (WEB_*_ENABLED) into the local agent config so
@@ -269,6 +287,13 @@ cmd_setup_scraper() {
 # not a TTY (e.g. piped installers) — the one-liners are printed instead.
 prompt_optional_services() {
     case "${OPENMONO_ROLE:-}" in full|inference) ;; *) return 0 ;; esac
+
+    # Inference (server) box: Caddy is the single front door the frpc tunnel
+    # routes through, so install it regardless of which web services are added.
+    if [[ "${OPENMONO_ROLE:-}" == "inference" ]]; then
+        _setup_gateway || warn "Gateway setup hit an issue; retry: openmono setup gateway"
+    fi
+
     echo ""
     echo -e "${BLUE}── Optional web services (private, run in Docker) ───────────${NC}"
     if [[ ! -t 0 ]]; then
@@ -277,11 +302,12 @@ prompt_optional_services() {
         echo -e "    ${BOLD}openmono setup scraper${NC}   # anti-bot web scraping (Scrapling)"
         return 0
     fi
+    # Guard each install so a hiccup in one doesn't abort the rest under 'set -e'.
     local ans
     printf "  Install private web search (SearXNG)? [y/N] "; read -r ans || true
-    [[ "$ans" =~ ^[Yy] ]] && cmd_setup_search
+    [[ "$ans" =~ ^[Yy] ]] && { cmd_setup_search || warn "SearXNG setup failed; retry: openmono setup search"; }
     printf "  Install web scraper (Scrapling, downloads a browser)? [y/N] "; read -r ans || true
-    [[ "$ans" =~ ^[Yy] ]] && cmd_setup_scraper
+    [[ "$ans" =~ ^[Yy] ]] && { cmd_setup_scraper || warn "Scrapling setup failed; retry: openmono setup scraper"; }
     echo ""
 }
 
@@ -323,6 +349,7 @@ cmd_help() {
     printf "  %-14s %s\n" "status"  "Show container + GPU + model status"
     echo ""
     echo "Optional web services (inference box, run in Docker):"
+    printf "  %-14s %s\n" "setup gateway"  "Install the Caddy gateway only (single tunnel front door)"
     printf "  %-14s %s\n" "setup search"   "Install SearXNG — private web search (backs WebSearch)"
     printf "  %-14s %s\n" "setup scraper"  "Install Scrapling — anti-bot web scraping (backs WebFetch)"
     echo ""
@@ -356,6 +383,7 @@ cmd_help() {
 cmd_setup() {
     # Sub-targets: install an individual optional service onto an existing box.
     case "${1:-}" in
+        gateway)           shift; _setup_gateway "$@"; return $? ;;
         search)            shift; cmd_setup_search "$@"; return $? ;;
         scraper|scrapper)  shift; cmd_setup_scraper "$@"; return $? ;;
     esac

@@ -21,13 +21,15 @@ RELAY_PUBLIC_HOST="relay.openmonoagent.ai"
 # the single remote port then reaches llama + search + scrape via path routing.
 GATEWAY_PORT="$(grep '^GATEWAY_PORT=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '[:space:]' || true)"
 GATEWAY_PORT="${GATEWAY_PORT:-7480}"
-WEB_ENABLED=false
-if grep -qE '^WEB_(SEARCH|SCRAPE)_ENABLED=true' "$ENV_FILE" 2>/dev/null; then
-    WEB_ENABLED=true
+# Tunnel the gateway (which fronts llama + any web services) whenever it's
+# installed; otherwise fall back to tunneling llama-server directly.
+if grep -q '^GATEWAY_ENABLED=true' "$ENV_FILE" 2>/dev/null || grep -qE '^WEB_(SEARCH|SCRAPE)_ENABLED=true' "$ENV_FILE" 2>/dev/null; then
     TUNNEL_LOCAL_PORT="$GATEWAY_PORT"
 else
     TUNNEL_LOCAL_PORT=7474
 fi
+WEB_ENABLED=false
+grep -qE '^WEB_(SEARCH|SCRAPE)_ENABLED=true' "$ENV_FILE" 2>/dev/null && WEB_ENABLED=true
 
 # Emit the agent-box web-gateway config lines (when the gateway is tunneled).
 print_web_config_lines() {
