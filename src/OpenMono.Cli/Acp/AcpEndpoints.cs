@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using OpenMono.Config;
 using OpenMono.Session;
+using OpenMono.Utils;
 
 namespace OpenMono.Acp;
 
@@ -68,6 +69,7 @@ public static class AcpEndpoints
     {
         var session = store.TryGet(id);
         if (session is null) return Results.NotFound();
+        Log.Info($"[OMA_MODE] GET session={id}: plan_mode={session.PlanMode} (frontend is pulling current mode)");
         return Results.Ok(new
         {
             session_id = session.Id,
@@ -147,6 +149,30 @@ public static class AcpEndpoints
                     var runner = runners.Create(session, new SseWriter(ctx.Response.Body, ctx.RequestAborted));
                     await runner.ResumeWithUserInputAsync(uinEl, ctx.RequestAborted);
                 }
+                else if (root.TryGetProperty("plan_decision", out var pdEl))
+                {
+                    StartSseResponse(ctx);
+                    var runner = runners.Create(session, new SseWriter(ctx.Response.Body, ctx.RequestAborted));
+                    await runner.ResumeWithPlanDecisionAsync(pdEl.GetString() ?? "keep", ctx.RequestAborted);
+                }
+                else if (root.TryGetProperty("mode", out var modeEl))
+                {
+                    var mode = modeEl.GetString() ?? "";
+                    var isPlanMode = mode.Equals("plan", StringComparison.OrdinalIgnoreCase);
+                    var wasPlanMode = session.PlanMode;
+                    session.PlanMode = isPlanMode;
+                    Log.Info($"[OMA_MODE] TOGGLE session={id}: PlanMode {wasPlanMode} → {isPlanMode} (frontend requested '{mode}')");
+                    // On an actual change, drop a one-time notice into the conversation so the
+                    // agent's next turn registers the switch (not just the static per-turn banner).
+                    if (wasPlanMode != isPlanMode)
+                        session.Messages.Add(new OpenMono.Session.Message
+                        {
+                            Role = OpenMono.Session.MessageRole.User,
+                            Content = isPlanMode ? ModeInstructions.SwitchedToPlan : ModeInstructions.SwitchedToBuild,
+                        });
+                    ctx.Response.StatusCode = StatusCodes.Status200OK;
+                    await ctx.Response.WriteAsJsonAsync(new { mode = isPlanMode ? "plan" : "build" }, ctx.RequestAborted);
+                }
                 else if (root.TryGetProperty("abort", out var abortEl) && abortEl.GetBoolean())
                 {
 
@@ -162,7 +188,7 @@ public static class AcpEndpoints
                         new
                         {
                             error = "invalid_body",
-                            detail = "body must contain `message`, `permission`, `user_input`, or `abort:true`",
+                            detail = "body must contain `message`, `permission`, `user_input`, `mode`, or `abort:true`",
                         },
                         ctx.RequestAborted);
                 }
@@ -229,7 +255,7 @@ public static class AcpEndpoints
         var result = new List<HistoryMessageDto>();
         foreach (var m in messages)
         {
-            if (m.Role == MessageRole.Tool) continue;
+            if (m.Role == MessageRole.Tool || m.Role == MessageRole.System) continue;
 
             var role = m.Role switch
             {

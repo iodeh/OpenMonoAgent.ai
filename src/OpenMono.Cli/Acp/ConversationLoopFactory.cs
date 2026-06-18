@@ -22,6 +22,8 @@ public sealed class ConversationLoopFactory
     private readonly IInputReader _input;
     private readonly ILiveFeedback? _liveFeedback;
 
+    public AppConfig Config => _config;
+
     public ConversationLoopFactory(
         ILlmClient llm,
         ToolRegistry tools,

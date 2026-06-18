@@ -153,6 +153,82 @@ public sealed class ConversationLoop : IDisposable
 
     public Task ContinueTurnAsync(CancellationToken ct) => RunTurnInternalAsync(ct);
 
+    /// <summary>
+    /// Resume after a permission pause by actually executing (or, if denied, refusing)
+    /// the tool calls from the last assistant message that have not yet been answered,
+    /// appending the REAL <see cref="ToolResult"/> for each.
+    ///
+    /// This replaces the old "Permission granted — re-issue the tool call" handshake.
+    /// That handshake never executed the tool: the file was never written, and the model
+    /// routinely read "permission granted" as "done" and hallucinated success. Here the
+    /// approved tool runs server-side and the model sees ground truth (real output or a
+    /// real error). The caller must seed the permission decision (so this execution does
+    /// not re-prompt) before invoking this.
+    /// </summary>
+    public async Task ResolvePendingToolCallsAsync(bool granted, CancellationToken ct)
+    {
+        var lastAssistant = _session.Messages
+            .LastOrDefault(m => m.Role == MessageRole.Assistant && m.ToolCalls is { Count: > 0 });
+        if (lastAssistant?.ToolCalls is null)
+        {
+            Log.Warn("[Resume] No pending tool calls to resolve after permission decision.");
+            return;
+        }
+
+        var answered = _session.Messages
+            .Where(m => m.Role == MessageRole.Tool && m.ToolCallId is not null)
+            .Select(m => m.ToolCallId!)
+            .ToHashSet();
+
+        var context = BuildToolContext();
+
+        foreach (var call in lastAssistant.ToolCalls)
+        {
+            if (answered.Contains(call.Id)) continue;
+
+            ToolResult result;
+            if (!granted)
+            {
+                var ctxSummary = LocalToolExecutor.SummarizeToolArgs(call.Arguments);
+                result = ToolResult.Error(
+                    $"The user DENIED permission for {call.Name}" +
+                    (string.IsNullOrEmpty(ctxSummary) ? "" : $" ({ctxSummary})") + ". " +
+                    "Do not retry this operation. Briefly tell the user you could not complete it, " +
+                    "then ask how they would like to proceed.");
+            }
+            else
+            {
+                // Permission was granted; the caller seeded the decision so this does
+                // not re-prompt. Execute for real and capture the actual result.
+                var tool = _tools.Resolve(call.Name);
+                result = await _executor.ExecuteAsync(call, tool, context, ct);
+            }
+
+            var content = result.Content;
+            if (content.Length > LargeResultThreshold)
+            {
+                var refPath = await StoreContentReplacementAsync(call.Name, content, ct);
+                content = $"[Result truncated — {content.Length} chars. Full output stored at: {refPath}]\n" +
+                          content[..Math.Min(2000, content.Length)] + "\n... (truncated)";
+            }
+
+            _session.AddMessage(new Message
+            {
+                Role = MessageRole.Tool,
+                ToolCallId = call.Id,
+                ToolName = call.Name,
+                Content = content,
+                IsError = result.IsError,
+            });
+
+            if (_sink is not null)
+            {
+                var artifactId = result.Artifacts.Count > 0 ? result.Artifacts[0].Id : null;
+                await _sink.OnToolResultPreviewAsync(call.Id, result.ModelPreview, artifactId);
+            }
+        }
+    }
+
     private async Task RunTurnInternalAsync(CancellationToken ct)
     {
         _doomLoop.Reset();
@@ -188,10 +264,6 @@ public sealed class ConversationLoop : IDisposable
             await RunCompactionAsync(lastPromptTokens, customInstructions: null, ct);
         }
 
-        var allowedToolNames = (_toolSubset?.Select(t => t.Name) ?? _tools.All.Select(t => t.Name)).ToArray();
-        var toolDefs = _session.Meta.PlanMode
-            ? _tools.BuildToolDefinitionsFor(allowedToolNames.Where(n => _tools.Resolve(n)?.IsReadOnly == true))
-            : _tools.BuildToolDefinitionsFor(allowedToolNames);
         var thinking = _session.Meta.ThinkingEnabled;
         var options = new LlmOptions
         {
@@ -239,6 +311,48 @@ public sealed class ConversationLoop : IDisposable
                 _output.WriteDebug($"[Turn] Iteration {i + 1}/{maxIterations}");
 
             var contextWindow = _checkpointer.BuildContextWindow(_session);
+
+            // Recompute the tool set EACH iteration so a mid-turn mode flip (e.g. ImplementPlan
+            // switching Plan→Build) immediately changes which tools the model is offered — the
+            // banner below and these defs always reflect the same, current mode.
+            var allowedToolNames = (_toolSubset?.Select(t => t.Name) ?? _tools.All.Select(t => t.Name)).ToArray();
+            var planModeToolNames = allowedToolNames.Where(n => _tools.Resolve(n)?.IsReadOnly == true).ToArray();
+            var toolDefs = _session.Meta.PlanMode
+                ? _tools.BuildToolDefinitionsFor(planModeToolNames)
+                : _tools.BuildToolDefinitionsFor(allowedToolNames);
+
+            // PREPEND the authoritative current-mode banner to the system message every turn
+            // (ephemeral, not persisted) so it is the first thing the model reads. This is the
+            // SINGLE source of mode-state truth in the prompt — the static system prompt says
+            // nothing about the current mode. Both Plan and Build get a banner so the model
+            // never infers its mode or parrots a stale "I'm in plan mode" from history.
+            {
+                var sysIdx = contextWindow.FindIndex(m => m.Role == MessageRole.System);
+                if (sysIdx >= 0)
+                {
+                    var banner = ModeInstructions.CurrentModeBanner(_session.Meta.PlanMode, planModeToolNames);
+                    contextWindow[sysIdx] = contextWindow[sysIdx] with
+                    {
+                        Content = banner + (contextWindow[sysIdx].Content ?? ""),
+                    };
+                }
+                Log.Info($"[OMA_MODE] turn {_session.TurnCount}: PlanMode={_session.Meta.PlanMode}; " +
+                         $"tools offered={(_session.Meta.PlanMode ? planModeToolNames.Length : allowedToolNames.Length)} " +
+                         $"({(_session.Meta.PlanMode ? "read-only" : "all")})");
+            }
+
+            // Log context window composition for debugging
+            var systemMsgs = contextWindow.Count(m => m.Role == MessageRole.System);
+            var userMsgs = contextWindow.Count(m => m.Role == MessageRole.User);
+            var assistantMsgs = contextWindow.Count(m => m.Role == MessageRole.Assistant);
+            var toolMsgs = contextWindow.Count(m => m.Role == MessageRole.Tool);
+            Log.Info($"[OMA_CONTEXTWINDOW] Sending to LLM: system={systemMsgs} user={userMsgs} assistant={assistantMsgs} tool={toolMsgs} total={contextWindow.Count}");
+            if (systemMsgs > 0)
+            {
+                var sysMsg = contextWindow.First(m => m.Role == MessageRole.System);
+                var preview = sysMsg.Content?.Substring(0, Math.Min(100, sysMsg.Content?.Length ?? 0)) ?? "";
+                Log.Info($"[OMA_CONTEXTWINDOW] System message preview: {preview}...");
+            }
 
             var textBuffer = new StringBuilder();
             var toolCalls = new List<ToolCall>();
@@ -364,9 +478,10 @@ public sealed class ConversationLoop : IDisposable
 
             if (_doomLoop.Check(toolCalls))
             {
-
                 await siblingAbortCts.CancelAsync();
-                _output.WriteWarning("Doom loop detected: agent is repeating the same tool calls. Stopping.");
+                const string doomMsg = "⚠ Doom loop detected: agent is repeating the same tool calls. Stopping.";
+                _output.WriteWarning(doomMsg);
+                if (_sink is not null) _ = _sink.OnSubAgentLogAsync(doomMsg);
                 _session.AddMessage(new Message
                 {
                     Role = MessageRole.User,
@@ -376,6 +491,11 @@ public sealed class ConversationLoop : IDisposable
                 await EmitUsageAsync();
                 return;
             }
+
+            // Capture mode before tools run so an agent-initiated change (EnterPlanMode /
+            // ExitPlanMode flips _session.Meta.PlanMode) can be detected and pushed to the
+            // frontend below — the agent must never change mode without the UI/TUI learning.
+            var planModeBeforeTools = _session.Meta.PlanMode;
 
             var results = await ExecuteToolCallsWithInflightAsync(toolCalls, inFlightTasks, context, siblingAbortCts, ct);
 
@@ -396,6 +516,7 @@ public sealed class ConversationLoop : IDisposable
                     ToolCallId = call.Id,
                     ToolName = call.Name,
                     Content = content,
+                    IsError = result.IsError,
                 });
 
                 if (_sink is not null)
@@ -403,6 +524,19 @@ public sealed class ConversationLoop : IDisposable
                     var artifactId = result.Artifacts.Count > 0 ? result.Artifacts[0].Id : null;
                     await _sink.OnToolResultPreviewAsync(call.Id, result.ModelPreview, artifactId);
                 }
+            }
+
+            // Agent-initiated mode change (EnterPlanMode / ExitPlanMode): keep both frontends
+            // in sync. Push an SSE event to the extension UI and print to the TUI. Done here
+            // (before the BreakTurn early-return) so ExitPlanMode's plan→build flip is covered.
+            if (_session.Meta.PlanMode != planModeBeforeTools)
+            {
+                var modeStr = _session.Meta.PlanMode ? "plan" : "build";
+                _output.WriteInfo(_session.Meta.PlanMode
+                    ? "✓ Switched to Plan mode — only read-only tools are available"
+                    : "✓ Switched to Build mode — all tools are available");
+                if (_sink is not null) await _sink.OnModeChangedAsync(modeStr);
+                Log.Info($"[OMA_MODE] Agent changed mode mid-turn → {modeStr.ToUpperInvariant()}; notified frontend");
             }
 
             var pendingImages = results
@@ -419,15 +553,24 @@ public sealed class ConversationLoop : IDisposable
 
             if (results.Any(r => r.BreakTurn))
             {
-                if (_session.Meta.LastPlan is { Length: > 0 } plan)
+                if (_session.Meta.LastPlanContent is { Length: > 0 } planText)
                 {
-                    _output.WriteInfo("Plan ready — review below. Reply to approve or request changes.");
-                    _output.WriteMarkdown(plan);
+                    if (_sink is not null)
+                    {
+                        // Extension: render the plan + options as a card with buttons.
+                        await _sink.OnPlanReadyAsync(planText, _session.Meta.LastPlanPath);
+                    }
+                    else
+                    {
+                        // TUI: show the plan + options; the user types 1/2/3 to choose.
+                        _output.WriteMarkdown(planText);
+                        _output.WriteInfo($"\n{ModeInstructions.ProceedOptions}\n\n(reply 1/2/3, or keep typing to refine the plan)");
+                    }
                 }
                 _session.AddMessage(new Message
                 {
                     Role = MessageRole.User,
-                    Content = PlanModeInstructions.PlanPresented,
+                    Content = ModeInstructions.PlanPresented,
                 });
                 _journal.FinishTurn("turn_break");
                 await EmitUsageAsync();
@@ -746,13 +889,21 @@ public sealed class ConversationLoop : IDisposable
         Permissions = _permissions,
         Config = _config,
         WorkingDirectory = _config.WorkingDirectory,
-        WriteOutput = text => _output.WriteMarkdown(text),
+        WriteOutput = text =>
+        {
+            _output.WriteMarkdown(text);
+            if (_sink is not null) _ = _sink.OnSubAgentLogAsync(text);
+        },
         AskUser = (question, ct) => _input.AskUserAsync(question, ct),
         FileHistory = _session.Meta.FileHistory,
         Cursors = _cursorStore,
         BeginResponse = _output.StartAssistantResponse,
         EndResponse = () => _output.EndAssistantResponse(),
-        StreamText = _output.StreamText,
+        StreamText = text =>
+        {
+            _output.StreamText(text);
+            if (_sink is not null) _ = _sink.OnSubAgentLogAsync(text);
+        },
         OnDebug = msg => { _output.WriteDebug(msg); Log.Debug(msg); },
         Output = _output,
         AgentDepth = _agentDepth,

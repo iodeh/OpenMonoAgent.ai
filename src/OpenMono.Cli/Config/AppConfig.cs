@@ -19,7 +19,15 @@ public sealed class AppConfig
     public bool ShowDetail { get; set; } = false;
     public bool VisionEnabled { get; set; } =
         Environment.GetEnvironmentVariable("OPENMONO_VISION_ENABLED") == "1";
-    public string WorkingDirectory { get; set; } = Directory.GetCurrentDirectory();
+    // Use OPENMONO_WORKSPACE if running in Docker container, otherwise use current directory
+    public string WorkingDirectory { get; set; } = GetWorkingDirectory();
+
+    private static string GetWorkingDirectory()
+    {
+        var envVar = Environment.GetEnvironmentVariable("OPENMONO_WORKSPACE");
+        var cwd = Directory.GetCurrentDirectory();
+        return envVar ?? cwd;
+    }
     public string? HostWorkingDirectory { get; set; }
     public string DataDirectory { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".openmono");

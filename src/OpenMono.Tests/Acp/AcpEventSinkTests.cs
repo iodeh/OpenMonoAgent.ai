@@ -171,6 +171,58 @@ public sealed class AcpEventSinkTests
 
 
 
+    [Fact]
+    public async Task Agent_calling_ImplementPlan_emits_OnModeChanged_to_frontend()
+    {
+        var sink = new RecordingSink();
+        var tools = new ToolRegistry();
+        tools.Register(new ImplementPlanTool());
+
+        var session = new SessionState();
+        session.AddMessage(new Message { Role = MessageRole.System, Content = "sys" });
+        session.Meta.PlanMode = true;
+
+        var (loop, _) = BuildLoop(sink, new FakeLlm(
+            new List<StreamChunk>
+            {
+                new() { ToolCallDelta = new ToolCall { Id = "call_impl", Name = "ImplementPlan", Arguments = "{}" }, IsComplete = false },
+                new() { IsComplete = true },
+            }),
+            session: session, tools: tools);
+
+        await loop.RunTurnAsync("go ahead and implement", null, CancellationToken.None);
+
+        // The agent flipped its own mode (Plan→Build) — the frontend MUST be told so the toggle stays in sync.
+        sink.ModeChanges.Should().Equal("build");
+        session.Meta.PlanMode.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AutoApproveWrites_runs_write_tool_without_a_permission_prompt()
+    {
+        var tools = new ToolRegistry();
+        var writeTool = new RecordingWriteTool();
+        tools.Register(writeTool);
+
+        var session = new SessionState();
+        session.AddMessage(new Message { Role = MessageRole.System, Content = "sys" });
+        // Build mode (PlanMode false by default) + Auto implement chosen → writes pre-approved.
+        session.Meta.AutoApproveWrites = true;
+
+        var (loop, _) = BuildLoop(new RecordingSink(), new FakeLlm(
+            new List<StreamChunk>
+            {
+                new() { ToolCallDelta = new ToolCall { Id = "w1", Name = "RecordingWrite", Arguments = "{}" }, IsComplete = false },
+                new() { IsComplete = true },
+            }),
+            session: session, tools: tools);
+
+        await loop.RunTurnAsync("do it", null, CancellationToken.None);
+
+        // Without AutoApproveWrites this Ask-permission write tool would block on a prompt.
+        writeTool.Executed.Should().BeTrue("AutoApproveWrites must let writes run without prompting");
+    }
+
     private static (ConversationLoop loop, SessionState session) BuildLoop(
         IAcpEventSink? sink,
         FakeLlm llm,
@@ -218,8 +270,13 @@ public sealed class AcpEventSinkTests
         public List<(string callId, string preview, string? artifactId)> ToolPreviews { get; } = new();
         public List<(int input, int output, int total)> UsageEvents { get; } = new();
         public List<(int compressed, double seconds, int idx)> Compactions { get; } = new();
+        public List<string> ModeChanges { get; } = new();
+
+        public List<string?> PlanReady { get; } = new();
 
         public Task OnTextDeltaAsync(string content) { TextDeltas.Add(content); return Task.CompletedTask; }
+        public Task OnModeChangedAsync(string mode) { ModeChanges.Add(mode); return Task.CompletedTask; }
+        public Task OnPlanReadyAsync(string planContent, string? planPath) { PlanReady.Add(planPath); return Task.CompletedTask; }
         public Task OnThinkingDeltaAsync(string content) { ThinkingDeltas.Add(content); return Task.CompletedTask; }
         public Task OnToolStartAsync(string callId, string name, string summary)
         { ToolStarts.Add((callId, name, summary)); return Task.CompletedTask; }
@@ -229,6 +286,23 @@ public sealed class AcpEventSinkTests
         public Task OnUsageAsync(int i, int o, int t) { UsageEvents.Add((i, o, t)); return Task.CompletedTask; }
         public Task OnToolResultPreviewAsync(string callId, string preview, string? artifactId)
         { ToolPreviews.Add((callId, preview, artifactId)); return Task.CompletedTask; }
+        public Task OnSubAgentLogAsync(string line) => Task.CompletedTask;
+    }
+
+    private sealed class RecordingWriteTool : ITool
+    {
+        public bool Executed { get; private set; }
+        public string Name => "RecordingWrite";
+        public string Description => "A write tool that records whether it executed";
+        public bool IsConcurrencySafe => false;
+        public bool IsReadOnly => false; // write tool — would normally prompt for permission
+        public JsonElement InputSchema { get; } = JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
+        public PermissionLevel RequiredPermission(JsonElement input) => PermissionLevel.Ask;
+        public Task<ToolResult> ExecuteAsync(JsonElement input, ToolContext ctx, CancellationToken ct)
+        {
+            Executed = true;
+            return Task.FromResult(ToolResult.Success("wrote"));
+        }
     }
 
     private sealed class PreviewTool : ITool
