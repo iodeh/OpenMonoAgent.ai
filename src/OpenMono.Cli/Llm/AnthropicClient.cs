@@ -229,7 +229,7 @@ public sealed class AnthropicClient : ILlmClient, IDisposable
                     role = "user",
                     content = new[]
                     {
-                        new { type = "tool_result", tool_use_id = m.ToolCallId, content = m.Content }
+                        new { type = "tool_result", tool_use_id = m.ToolCallId, content = m.Content, is_error = m.IsError }
                     }
                 },
                 _ => new { role = "user", content = m.Content },

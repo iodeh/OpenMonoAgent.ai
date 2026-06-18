@@ -166,7 +166,7 @@ public sealed class AcpEndpointsTests : IAsyncLifetime
         root.GetProperty("session_id").GetString().Should().Be(sid);
         root.GetProperty("model").GetString().Should().Be("test-model");
         root.GetProperty("turn_count").GetInt32().Should().Be(0);
-        root.GetProperty("plan_mode").GetBoolean().Should().BeFalse();
+        root.GetProperty("plan_mode").GetBoolean().Should().BeTrue("new sessions default to plan mode (read-only)");
     }
 
 

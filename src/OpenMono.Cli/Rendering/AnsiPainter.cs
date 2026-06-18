@@ -1336,7 +1336,10 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
             : "";
         var canCancel = _isTurnActive() || QueuedCount > 0;
         var cancelHint = canCancel ? $"{Fk}esc{R}{BgStatus} {Fw}cancel{R}{BgStatus}" : "";
-        var mid   = $"{scrollIndicator}{cancelHint}";
+        var modeIndicator = session.Meta.PlanMode
+            ? $"{Fk}[{R}{Fy}PLAN{R}{Fk}]{R}{BgStatus} "
+            : $"{Fk}[{R}{Fg}BUILD{R}{Fk}]{R}{BgStatus} ";
+        var mid   = $"{modeIndicator}{scrollIndicator}{cancelHint}";
         var right = $"{Fk}ctrl+c{R}{BgStatus} {Fw}quit{R}{BgStatus}   {Fk}ctrl+p{R}{BgStatus} {Fw}commands{R}{BgStatus} ";
         var visM  = VisLen(mid);
         var visR  = VisLen(right);

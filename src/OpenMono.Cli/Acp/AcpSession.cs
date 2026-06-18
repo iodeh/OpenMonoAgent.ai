@@ -16,7 +16,14 @@ public sealed class AcpSession
     public DateTime LastActivityAt { get; set; }
     public required string Model { get; init; }
     public int TurnCount { get; set; }
-    public bool PlanMode { get; set; }
+    // Default to plan mode (read-only). The extension UI also defaults to "plan", but it
+    // only transmits the mode on an explicit toggle — so without this default a fresh
+    // session would silently run in build mode (writes allowed) while the UI showed "plan".
+    public bool PlanMode { get; set; } = true;
+
+    // True after the user chose "Auto implement" for a plan — write/exec tools run without
+    // per-edit prompts. Mirrored into SessionState.Meta each turn (see AcpTurnRunner).
+    public bool AutoApproveWrites { get; set; }
     public List<TodoItem> Todos { get; init; } = new();
     public List<Message> Messages { get; init; } = new();
 
@@ -76,6 +83,12 @@ public sealed class AcpSession
 
     public bool? TryGetRememberedPermission(string contextKey)
         => _rememberedPermissions.TryGetValue(contextKey, out var v) ? v : null;
+
+    // Drop a remembered decision. Used for "once" scope: a temporary grant is
+    // seeded so the resumed tool execution passes without re-prompting, then
+    // forgotten immediately so a later call this session prompts again.
+    public void ForgetPermission(string contextKey)
+        => _rememberedPermissions.TryRemove(contextKey, out _);
 
     public void RememberUserInput(string contextKey, string value)
         => _rememberedUserInputs[contextKey] = value;

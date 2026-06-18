@@ -87,6 +87,7 @@ for (var i = 0; i < args.Length; i++)
             Console.WriteLine("  /undo [n]          Revert last n file modification(s)");
             Console.WriteLine("  /checkpoint        Checkpoint conversation to free context");
             Console.WriteLine("  /think             Toggle step-by-step reasoning mode");
+            Console.WriteLine("  /mode              Toggle between Plan mode (read-only) and Build mode (write)");
             Console.WriteLine("  /init              Auto-generate OPENMONO.md from project");
             Console.WriteLine("  /resume [id]       Restore a previous session");
             Console.WriteLine("  /export            Export conversation (markdown/json/html)");
@@ -184,7 +185,8 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
     tools.Register(new ListDirectoryTool());
     tools.Register(new ApplyPatchTool());
     tools.Register(new EnterPlanModeTool());
-    tools.Register(new ExitPlanModeTool());
+    tools.Register(new CreatePlanTool());
+    tools.Register(new ImplementPlanTool());
     tools.Register(new LspTool(lspManager));
 
     var refDir = ResolveRefDirectory(config);
@@ -301,6 +303,7 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
             await acpHost.StartAsync(acpCts.Token);
             renderer.WriteInfo($"ACP server listening on http://127.0.0.1:{acp.Port}");
             renderer.WriteInfo($"Lock file: {lockFileWriter.LockFilePath}");
+            Console.WriteLine($"[OMA_INIT] ACP server started. System prompt loaded: {SystemPrompt.Base.Length} characters");
         }
         catch (Exception ex)
         {
@@ -357,7 +360,7 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
     commands.Register(new ClearCommand());
     commands.Register(new CheckpointCommand(checkpointer));
     commands.Register(new ThinkCommand());
-    commands.Register(new PlanCommand());
+    commands.Register(new ModeCommand());
 
     var compactor = new Compactor(llm, config.Llm.ContextSize);
     var loop = new ConversationLoop(llm, tools, permissions, renderer, renderer, renderer, config, session, compactor, memoryStore,
@@ -504,6 +507,34 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
         // Transform relative @ file references to absolute paths
         // The agent will call FileRead to load files (per system prompt)
         var transformedInput = FileReferenceResolver.TransformRelativeReferences(input, config.WorkingDirectory);
+
+        // TUI plan-decision menu: when a plan is awaiting a decision (CreatePlan presented one
+        // and we're still in Plan mode), map 1/2/3 to the same routing the extension buttons use.
+        if (session.Meta.PlanMode && session.Meta.LastPlanContent is { Length: > 0 })
+        {
+            var choice = input.Trim().ToLowerInvariant() switch
+            {
+                "1" or "auto" or "implement" => "auto",
+                "2" or "ask" or "gated" => "gated",
+                "3" or "keep" => "keep",
+                _ => null,
+            };
+            if (choice == "keep")
+            {
+                renderer.WriteInfo("Staying in Plan mode — refine the plan, or pick 1 (auto) / 2 (ask before edits).");
+                continue;
+            }
+            if (choice is "auto" or "gated")
+            {
+                var (_, autoApprove, instruction) = ModeInstructions.ResolvePlanDecision(choice);
+                session.Meta.PlanMode = false;
+                session.Meta.AutoApproveWrites = autoApprove;
+                session.Meta.LastPlanContent = null;
+                renderer.WriteInfo($"Switched to Build mode — implementing{(autoApprove ? "" : " (you'll be prompted before edits)")}.");
+                transformedInput = instruction;
+            }
+            // else: unrecognized input → treat as a plan refinement (fall through normally).
+        }
 
         ansiTui?.AddUserMessage(input);
         using var turnCts = new CancellationTokenSource();
@@ -1023,11 +1054,24 @@ static class SystemPrompt
         - Glob       — find files by pattern (NOT find via Bash)
         - Grep       — search file contents (NOT grep/rg via Bash)
 
+        CRITICAL: Do NOT claim you have completed a file operation task until you have called the corresponding tool and received its result.
+        - If you say "I'll write X to a file", you MUST immediately call FileWrite and show the result.
+        - Never say "the file has been created" without having called FileWrite.
+        - If you cannot invoke a tool (e.g., permission denied), report the error, do NOT claim success.
+
         Reserve Bash for: git commands, build tools (dotnet, npm, cargo), running tests, system operations.
 
         PARALLELISM: call multiple independent tools in a single response. Never serialize lookups that can run simultaneously.
         - CORRECT: call FileRead, Glob, and Grep together when they are independent
         - WRONG: call FileRead, wait for result, then call Glob, wait, then call Grep
+
+        TOOL CALLING DISCIPLINE:
+        - Every file write, edit, or creation MUST use FileWrite, FileEdit, or ApplyPatch. NO EXCEPTIONS.
+        - Every directory operation MUST use ListDirectory or Glob. NO EXCEPTIONS.
+        - Describe what you are about to do, then call the tool, then show the result.
+        - If a tool call fails, diagnose the error and retry with a different approach.
+        - Never skip a tool call because you think you know the result. Actually call it.
+        - Never hallucinate tool results. Wait for the actual tool response before claiming success.
 
         Use Lsp for hover info, go-to-definition, and find references when you need semantic code intelligence.
         Use RoslynTool for C# semantic analysis: find all usages of a symbol, get type information, resolve

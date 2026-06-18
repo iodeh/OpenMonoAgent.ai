@@ -151,7 +151,7 @@ public sealed class OpenAiCompatClient : ILlmClient, IDisposable
                     foreach (var tc in toolCalls.Values.Where(t => t.IsComplete))
                     {
                         OnDebug?.Invoke($"[SSE] tool_call: {tc.Name} {{ {tc.Arguments.ToString()[..Math.Min(100, tc.Arguments.Length)]} }}");
-                        Log.Debug($"SSE tool_call: {tc.Name} args={tc.Arguments.ToString()[..Math.Min(200, tc.Arguments.Length)]}");
+                        Log.Info($"[OMA_TOOLCALL] LLM generated tool call: {tc.Name} args={tc.Arguments.ToString()[..Math.Min(200, tc.Arguments.Length)]}");
 
                         yield return new StreamChunk
                         {
@@ -166,7 +166,7 @@ public sealed class OpenAiCompatClient : ILlmClient, IDisposable
 
                     var elapsed = streamStarted.Elapsed;
                     OnDebug?.Invoke($"[LLM] Stream complete — {chunkCount} chunks in {elapsed.TotalSeconds:F1}s");
-                    Log.Debug($"LLM stream complete: chunks={chunkCount} elapsed={elapsed.TotalSeconds:F1}s");
+                    Log.Info($"[OMA_LLM] Stream complete: chunks={chunkCount} tool_calls={toolCalls.Count} elapsed={elapsed.TotalSeconds:F1}s");
 
                     if (toolCalls.Count == 0 && suppressText)
                     {
@@ -325,6 +325,12 @@ public sealed class OpenAiCompatClient : ILlmClient, IDisposable
         string configModel)
     {
         var model = string.IsNullOrEmpty(options.Model) ? configModel : options.Model;
+
+        // Log message roles being sent to API
+        var msgRoles = string.Join(",", messages.Select(m => m.Role.ToString()[0]));
+        var systemCount = messages.Count(m => m.Role == MessageRole.System);
+        Log.Info($"[OMA_LLM_REQUEST] Building request with {messages.Count} messages: {msgRoles} (system={systemCount})");
+
         var apiMessages = messages.Select<Message, object>(m => m.Role switch
         {
             MessageRole.System => new { role = "system", content = m.Content },

@@ -65,6 +65,8 @@ public sealed class ToolDispatcher : IDisposable
         if (toolCalls.Count == 0)
             return [];
 
+        Log.Info($"[OMA_DISPATCH] ExecuteToolCallsAsync called with {toolCalls.Count} tool(s): {string.Join(", ", toolCalls.Select(tc => tc.Name))}");
+
         if (_doomLoop.Check(toolCalls))
         {
             _renderer.WriteWarning("Doom loop detected — same tool calls repeated 3 times");
@@ -102,6 +104,7 @@ public sealed class ToolDispatcher : IDisposable
             {
                 try
                 {
+                    Log.Info($"[OMA_DISPATCH] Executing (read-only, parallel): {item.Tool.Name}");
                     results[item.Index] = await _executor.ExecuteAsync(item.Call, item.Tool, context, ct);
                 }
                 catch (Exception ex)
@@ -116,6 +119,7 @@ public sealed class ToolDispatcher : IDisposable
         {
             try
             {
+                Log.Info($"[OMA_DISPATCH] Executing (write, sequential): {item.Tool.Name}");
                 results[item.Index] = await _executor.ExecuteAsync(item.Call, item.Tool, context, ct);
             }
             catch (Exception ex)

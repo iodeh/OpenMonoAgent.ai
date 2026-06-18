@@ -43,17 +43,59 @@ public sealed class AcpTurnRunner : IAcpEventSink
         _loopFactory = loopFactory;
         _settings = settings;
         _interaction = new AcpUserInteractionForwarder(session, writer, settings.PendingUserResponseTimeout);
+
+        // Log system prompt availability on first turn for this session
+        if (session.TurnCount == 0)
+        {
+            var promptLength = SystemPrompt.Base.Length;
+            var promptPreview = SystemPrompt.Base.Substring(0, Math.Min(80, SystemPrompt.Base.Length)).Replace("\n", " ");
+            Console.WriteLine($"[OMA_INIT] ACP session {session.Id} initialized. System prompt available: {promptLength} chars.");
+            Console.Out.Flush();
+            Console.WriteLine($"[OMA_DEBUG] Log.LogPath = {Log.LogPath}");
+            Console.Out.Flush();
+            Console.WriteLine($"[OMA_DEBUG] Log initialized: {(Log.LogPath != null ? "YES" : "NO")}");
+            Console.Out.Flush();
+            Log.Info($"[OMA_INIT] ACP session {session.Id} initialized. System prompt available: {promptLength} chars. Preview: {promptPreview}...");
+        }
     }
 
 
 
     public async Task RunUserMessageAsync(string userText, CancellationToken ct)
     {
+        Console.WriteLine($"[OMA_DISPATCH] RunUserMessageAsync called. Current messages: {_acpSession.Messages.Count}");
+        Console.Out.Flush();
+
+        // Ensure system prompt is set on first message
+        if (_acpSession.Messages.Count == 0 || _acpSession.Messages[0].Role != MessageRole.System)
+        {
+            Console.WriteLine($"[OMA_SYSTEMPROMPT] Adding system prompt ({SystemPrompt.Base.Length} chars). Messages before: {_acpSession.Messages.Count}");
+            Console.Out.Flush();
+            Log.Info($"[OMA_SYSTEMPROMPT] Session {_acpSession.Id}: Adding system prompt ({SystemPrompt.Base.Length} chars). Messages before: {_acpSession.Messages.Count}");
+            _acpSession.Messages.Insert(0, new Message
+            {
+                Role = MessageRole.System,
+                Content = SystemPrompt.Base
+            });
+            Console.WriteLine($"[OMA_SYSTEMPROMPT] System prompt added. Messages now: {_acpSession.Messages.Count}. First is System: {_acpSession.Messages[0].Role == MessageRole.System}");
+            Console.Out.Flush();
+            Log.Info($"[OMA_SYSTEMPROMPT] System prompt added. Messages after: {_acpSession.Messages.Count}. First message is System: {_acpSession.Messages[0].Role == MessageRole.System}");
+        }
+        else
+        {
+            Console.WriteLine($"[OMA_SYSTEMPROMPT] System prompt already present. Messages: {_acpSession.Messages.Count}");
+            Console.Out.Flush();
+            Log.Info($"[OMA_SYSTEMPROMPT] System prompt already present in message history, not adding again");
+        }
+
         // Transform relative @ file references to absolute paths (e.g., @file.md → @/workspace/file.md)
         var transformedText = FileReferenceResolver.TransformRelativeReferences(userText, _loopFactory.Config.WorkingDirectory);
 
         _acpSession.Messages.Add(new Message { Role = MessageRole.User, Content = transformedText });
         _acpSession.TurnCount++;
+        Console.WriteLine($"[OMA_TURN] turn {_acpSession.TurnCount}: {_acpSession.Messages.Count} total messages. First is System: {_acpSession.Messages[0].Role == MessageRole.System}");
+        Console.Out.Flush();
+        Log.Info($"[OMA_TURN] Session {_acpSession.Id} turn {_acpSession.TurnCount}: Processing message with {_acpSession.Messages.Count} total messages (first is System: {_acpSession.Messages[0].Role == MessageRole.System})");
         await DriveLoopAsync(ct);
     }
 
@@ -64,10 +106,19 @@ public sealed class AcpTurnRunner : IAcpEventSink
         var decision = payload.TryGetProperty("decision", out var dEl) ? dEl.GetString() : null;
         var allow = string.Equals(decision, "allow", StringComparison.Ordinal);
 
-        // scope: "session" caches the decision so this tool is never asked again
-        // in this session. scope: "once" (or absent) grants/denies only this
-        // invocation with no cache write.
-        var scope = payload.TryGetProperty("scope", out var sEl) ? sEl.GetString() : "session";
+        // SCOPE-AWARE PERMISSION HANDLING (Phase 1 Implementation)
+        // ─────────────────────────────────────────────────────────
+        // scope: "session" → cache the decision for the entire session
+        //   - Tool will not be re-prompted for this type/capability in this session
+        //   - Stored in _acpSession.RememberPermission() (session-level cache)
+        //
+        // scope: "once" (default) → decision applies to only this invocation
+        //   - No cache write; per-turn temporary scope
+        //   - Future: consider per-turn denial tracking to prevent re-prompting same denied tool
+        //
+        // Security: Default to "once" scope if not specified. Extension must explicitly
+        // choose "session" to get session-wide caching behavior.
+        var scope = payload.TryGetProperty("scope", out var sEl) ? sEl.GetString() : "once";
 
         var ctx = _acpSession.LookupPauseContext(id)
             ?? throw new InvalidOperationException($"permission_response for unknown or already-resolved pause id: {id}");
@@ -77,14 +128,54 @@ public sealed class AcpTurnRunner : IAcpEventSink
         if (!_acpSession.TryResolvePause(id, new AcpPermissionResponse(allow)))
             throw new InvalidOperationException($"failed to resolve pause id: {id}");
 
-        if (string.Equals(scope, "session", StringComparison.Ordinal))
+        // === Scope handling ===
+        // "session" → cache the decision so this tool is not re-prompted this session.
+        // "once"    → for an allow, seed a TEMPORARY grant so the resumed execution does
+        //             not re-prompt, then forget it (below) so a later call prompts again.
+        var isCaching = string.Equals(scope, "session", StringComparison.Ordinal);
+        if (isCaching)
             _acpSession.RememberPermission(ctx.ContextKey, allow);
+        else if (allow)
+            _acpSession.RememberPermission(ctx.ContextKey, true);
 
-        AppendSyntheticToolMessages(allow
-            ? "Permission granted by user. Re-issue the tool call to execute."
-            : "Permission denied by user.");
+        Log.Info($"[OMA_PERM] Resolved: id={id} decision={decision} scope={scope} caching={isCaching} contextKey={ctx.ContextKey}");
 
-        await DriveLoopAsync(ct);
+        // Execute-on-resume: actually run (or, if denied, refuse) the pending tool call and
+        // feed the REAL result back to the model. This replaces the old "re-issue the tool
+        // call" handshake, which never executed the tool (file unwritten) and let the model
+        // hallucinate success from a bare "permission granted" message.
+        var sessionState = BuildSessionState();
+        using var loop = _loopFactory.Create(sessionState, sink: this, interaction: _interaction);
+        try
+        {
+            try
+            {
+                await loop.ResolvePendingToolCallsAsync(allow, ct);
+            }
+            finally
+            {
+                // Strict "once": the temporary grant only ever covers the resumed execution.
+                if (allow && !isCaching)
+                    _acpSession.ForgetPermission(ctx.ContextKey);
+            }
+
+            await loop.ContinueTurnAsync(ct);
+            SyncBackToAcpSession(sessionState);
+            await _writer.WriteEventAsync("done", new { });
+        }
+        catch (PendingUserResponseException)
+        {
+            SyncBackToAcpSession(sessionState);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            SyncBackToAcpSession(sessionState);
+        }
+        catch (Exception e)
+        {
+            SyncBackToAcpSession(sessionState);
+            await _writer.WriteEventAsync("error", new { message = e.Message });
+        }
     }
 
     public async Task ResumeWithUserInputAsync(JsonElement payload, CancellationToken ct)
@@ -106,6 +197,29 @@ public sealed class AcpTurnRunner : IAcpEventSink
 
         AppendSyntheticToolMessages(value);
 
+        await DriveLoopAsync(ct);
+    }
+
+    public async Task ResumeWithPlanDecisionAsync(string decision, CancellationToken ct)
+    {
+        var (implement, autoApprove, instruction) = ModeInstructions.ResolvePlanDecision(decision);
+
+        if (!implement)
+        {
+            // "Keep planning" — stay in Plan mode; the user will refine via a normal message.
+            Log.Info($"[OMA_MODE] plan_decision='{decision}' → keep planning (no change)");
+            await _writer.WriteEventAsync("done", new { });
+            return;
+        }
+
+        // Deterministic implement: flip to Build, set gating, tell the UI, then drive the turn.
+        _acpSession.PlanMode = false;
+        _acpSession.AutoApproveWrites = autoApprove;
+        await OnModeChangedAsync("build");
+        Log.Info($"[OMA_MODE] plan_decision='{decision}' → BUILD, autoApproveWrites={autoApprove}");
+
+        _acpSession.Messages.Add(new Message { Role = MessageRole.User, Content = instruction });
+        _acpSession.TurnCount++;
         await DriveLoopAsync(ct);
     }
 
@@ -161,7 +275,28 @@ public sealed class AcpTurnRunner : IAcpEventSink
     {
         var lastAssistant = _acpSession.Messages
             .LastOrDefault(m => m.Role == MessageRole.Assistant && m.ToolCalls is not null);
-        if (lastAssistant?.ToolCalls is null || lastAssistant.ToolCalls.Count == 0) return;
+        if (lastAssistant?.ToolCalls is null || lastAssistant.ToolCalls.Count == 0)
+        {
+            // If no assistant message with tool calls exists, we're likely resuming from a permission
+            // pause before the LLM response was added to history. In this case, create a synthetic
+            // assistant message with a generic tool call, then answer it with the resolution.
+            Log.Info($"[OMA_SYNTHETIC] No pending tool calls found in history, but permission was resolved. Creating synthetic response to guide LLM.");
+            var syntheticCallId = $"synthetic_{Guid.NewGuid().ToString("N")[..12]}";
+            _acpSession.Messages.Add(new Message
+            {
+                Role = MessageRole.Assistant,
+                Content = "I'll attempt the operation now that permission has been granted.",
+                ToolCalls = [new ToolCall { Id = syntheticCallId, Name = "PendingTool", Arguments = "{}" }]
+            });
+            _acpSession.Messages.Add(new Message
+            {
+                Role = MessageRole.Tool,
+                ToolCallId = syntheticCallId,
+                ToolName = "PendingTool",
+                Content = resolutionContent,
+            });
+            return;
+        }
 
         var alreadyAnswered = _acpSession.Messages
             .Where(m => m.Role == MessageRole.Tool && m.ToolCallId is not null)
@@ -189,6 +324,7 @@ public sealed class AcpTurnRunner : IAcpEventSink
         foreach (var m in _acpSession.Messages) ss.AddMessage(m);
         ss.TurnCount = _acpSession.TurnCount;
         ss.Meta.PlanMode = _acpSession.PlanMode;
+        ss.Meta.AutoApproveWrites = _acpSession.AutoApproveWrites;
         ss.Todos.Clear();
         foreach (var t in _acpSession.Todos) ss.Todos.Add(t);
         ss.Meta.TokenTracker ??= new TokenTracker();
@@ -200,6 +336,7 @@ public sealed class AcpTurnRunner : IAcpEventSink
         _acpSession.Messages.Clear();
         _acpSession.Messages.AddRange(ss.Messages);
         _acpSession.PlanMode = ss.Meta.PlanMode;
+        _acpSession.AutoApproveWrites = ss.Meta.AutoApproveWrites;
         _acpSession.Todos.Clear();
         foreach (var t in ss.Todos) _acpSession.Todos.Add(t);
     }
@@ -225,6 +362,16 @@ public sealed class AcpTurnRunner : IAcpEventSink
             preview,
             artifact_id = artifactId,
         });
+
+    public Task OnModeChangedAsync(string mode)
+    {
+        // Keep the ACP session (source of truth) consistent immediately, then notify the UI.
+        _acpSession.PlanMode = string.Equals(mode, "plan", StringComparison.OrdinalIgnoreCase);
+        return _writer.WriteEventAsync("mode_changed", new { mode });
+    }
+
+    public Task OnPlanReadyAsync(string planContent, string? planPath)
+        => _writer.WriteEventAsync("plan_ready", new { plan = planContent, plan_path = planPath });
 
     public Task OnCompactionAsync(int messagesCompressed, double durationSeconds, int checkpointIndex)
         => _writer.WriteEventAsync("compaction", new
