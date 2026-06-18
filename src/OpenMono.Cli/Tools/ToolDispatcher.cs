@@ -22,6 +22,7 @@ public sealed class ToolDispatcher : IDisposable
     private readonly ToolResultCache _cache;
     private readonly ArtifactStore _artifactStore;
     private readonly IToolExecutor _executor;
+    private readonly int _maxReadOnlyConcurrency;
 
     private readonly DoomLoopDetector _doomLoop = new();
 
@@ -36,8 +37,12 @@ public sealed class ToolDispatcher : IDisposable
         CursorStore? cursorStore = null,
         ToolResultCache? cache = null,
         ArtifactStore? artifactStore = null,
-        IToolExecutor? executor = null)
+        IToolExecutor? executor = null,
+        int? maxReadOnlyConcurrency = null)
     {
+        _maxReadOnlyConcurrency = maxReadOnlyConcurrency is { } cap && cap > 0
+            ? cap
+            : Math.Max(1, Environment.ProcessorCount);
         _tools = tools;
         _permissions = permissions;
         _renderer = renderer;
@@ -98,8 +103,10 @@ public sealed class ToolDispatcher : IDisposable
 
         if (readOnlyItems.Count > 0)
         {
+            using var gate = new SemaphoreSlim(_maxReadOnlyConcurrency);
             var tasks = readOnlyItems.Select(async item =>
             {
+                await gate.WaitAsync(ct);
                 try
                 {
                     results[item.Index] = await _executor.ExecuteAsync(item.Call, item.Tool, context, ct);
@@ -107,6 +114,10 @@ public sealed class ToolDispatcher : IDisposable
                 catch (Exception ex)
                 {
                     results[item.Index] = ToolResult.Crash($"Tool crashed: {ex.Message}", "Report this as a bug.");
+                }
+                finally
+                {
+                    gate.Release();
                 }
             });
             await Task.WhenAll(tasks);

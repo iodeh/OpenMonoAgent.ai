@@ -14,9 +14,6 @@ public sealed class AnthropicClient : ILlmClient, IDisposable
     private readonly string _apiKey;
 
     private const int MaxRetries = 3;
-    private static readonly TimeSpan[] RetryDelays = [
-        TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(16)
-    ];
 
     public Action<string>? OnDebug { get; set; }
 
@@ -56,14 +53,16 @@ public sealed class AnthropicClient : ILlmClient, IDisposable
         OnDebug?.Invoke($"[LLM] Model: {options.Model} | Messages: {messages.Count} | Tools: {toolCount} | MaxTokens: {options.MaxTokens}");
         Log.Debug($"Anthropic request: model={options.Model} messages={messages.Count} tools={toolCount}");
 
+        TimeSpan? pendingRetryAfter = null;
+
         for (var attempt = 0; attempt <= MaxRetries; attempt++)
         {
             ct.ThrowIfCancellationRequested();
             if (attempt > 0)
             {
-                var delay = RetryDelays[Math.Min(attempt - 1, RetryDelays.Length - 1)];
-                OnDebug?.Invoke($"[LLM] Retry {attempt}/{MaxRetries} after {delay.TotalSeconds}s");
-                Log.Warn($"Anthropic retry {attempt}/{MaxRetries}");
+                var delay = RetryPolicy.NextDelay(attempt, pendingRetryAfter, Random.Shared.NextDouble());
+                OnDebug?.Invoke($"[LLM] Retry {attempt}/{MaxRetries} after {delay.TotalSeconds:F1}s");
+                Log.Warn($"Anthropic retry {attempt}/{MaxRetries} after {delay.TotalSeconds:F1}s");
                 await Task.Delay(delay, ct);
             }
 
@@ -79,6 +78,7 @@ public sealed class AnthropicClient : ILlmClient, IDisposable
 
                 if ((int)response.StatusCode is 429 or 500 or 502 or 503 or 529)
                 {
+                    pendingRetryAfter = RetryPolicy.ParseRetryAfter(response);
                     response.Dispose(); response = null; continue;
                 }
                 response.EnsureSuccessStatusCode();
@@ -86,6 +86,7 @@ public sealed class AnthropicClient : ILlmClient, IDisposable
             }
             catch (HttpRequestException) when (attempt < MaxRetries)
             {
+                pendingRetryAfter = null;
                 response?.Dispose(); response = null;
             }
         }
