@@ -208,6 +208,7 @@ elif [ "$HAS_NVIDIA_HW" = true ] || command -v nvidia-smi &>/dev/null; then
         printf "${BLUE}${BOLD}  NVIDIA GPU Detected${NC}\n"
         printf "${BLUE}%s${NC}\n" "$(printf '─%.0s' $(seq 1 60))"
         echo ""
+        flush_stdin  # drop keystrokes buffered during earlier long steps
         _gpu_invalid=0
         while true; do
             [ "$_gpu_invalid" -eq 1 ] && printf "  ${RED}Please press Y or N.${NC}\n\n"
@@ -248,6 +249,7 @@ elif [[ "$HAS_AMD_780M" = true && "${OPENMONO_ROLE:-}" != "agent" ]]; then
         echo "  1) CPU only   — standard inference (no kernel changes)"
         echo "  2) iGPU (Vulkan) — Radeon 780M acceleration (modifies kernel config)"
         echo ""
+        flush_stdin  # drop keystrokes buffered during earlier long steps
         printf "  Choose mode [1=cpu, 2=igpu] [default: 1]: "
         read -r -n 1 _igpu_choice
         echo ""
@@ -258,6 +260,7 @@ elif [[ "$HAS_AMD_780M" = true && "${OPENMONO_ROLE:-}" != "agent" ]]; then
             printf "  This will modify your kernel configuration.\n"
             printf "  Recommended for dedicated inference setups only!\n"
             echo ""
+            flush_stdin  # else a buffered Enter skips this deliberate pause
             printf "  Press ENTER to continue or Ctrl+C to abort: "
             read -r _amd_confirm
             AMD_IGPU_MODE=1
@@ -375,6 +378,7 @@ if command -v docker &>/dev/null; then
         elif [ "${OPENMONO_AUTO_REPLACE_DOCKER:-}" = "0" ]; then
             _reply=n
         else
+            flush_stdin  # drop keystrokes buffered during earlier long steps
             printf "  Install native docker-ce now? (removes Docker Desktop\n"
             printf "  integration in THIS WSL distro only — your host install\n"
             printf "  is untouched.)                                        [Y/n]: "
@@ -582,6 +586,9 @@ if [ "${NVIDIA_REBOOT_PENDING:-false}" = "true" ]; then
         echo ""
         info "NVIDIA drivers are installed but will only become active after a reboot."
         echo ""
+        # Critical: this prompt defaults to Y and reboots. A keystroke buffered
+        # during the long driver/CUDA install must not auto-trigger it.
+        flush_stdin
         _reboot_invalid=0
         while true; do
             [ "$_reboot_invalid" -eq 1 ] && printf "  ${RED}Please press Y or N.${NC}\n\n"
@@ -621,6 +628,9 @@ if [ "${AMD_IGPU_REBOOT_PENDING:-false}" = "true" ]; then
     echo ""
     info "AMD iGPU kernel optimizations are installed but will only become active after a reboot."
     echo ""
+    # Critical: this prompt defaults to Y and reboots. A keystroke buffered
+    # during the long optimization step must not auto-trigger it.
+    flush_stdin
     _reboot_invalid=0
     while true; do
         [ "$_reboot_invalid" -eq 1 ] && printf "  ${RED}Please press Y or N.${NC}\n\n"
