@@ -3,6 +3,7 @@ using System.Text.Json;
 using FluentAssertions;
 using OpenMono.Acp;
 using OpenMono.Permissions;
+using OpenMono.Session;
 using Xunit;
 
 namespace OpenMono.Tests.Acp;
@@ -133,7 +134,7 @@ public sealed class AcpUserInteractionForwarderTests
     {
         var body = new MemoryStream();
         var writer = new SseWriter(body, CancellationToken.None);
-        var session = new AcpSession { Id = "sess_test", StartedAt = DateTime.UtcNow, Model = "test-model" };
+        var session = new AcpSession { State = new SessionState { Id = "sess_test", StartedAt = DateTime.UtcNow, Model = "test-model" } };
         var forwarder = new AcpUserInteractionForwarder(session, writer, TimeSpan.FromMinutes(10));
         return (forwarder, session, body);
     }

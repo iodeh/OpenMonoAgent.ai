@@ -210,9 +210,12 @@ public sealed class AcpTurnRunnerTests
     {
         var s = new AcpSession
         {
-            Id = "sess_" + Guid.NewGuid().ToString("N")[..8],
-            StartedAt = DateTime.UtcNow,
-            Model = "test-model",
+            State = new SessionState
+            {
+                Id = "sess_" + Guid.NewGuid().ToString("N")[..8],
+                StartedAt = DateTime.UtcNow,
+                Model = "test-model",
+            },
         };
         s.Messages.Add(new Message { Role = MessageRole.System, Content = "you are helpful" });
         return s;
