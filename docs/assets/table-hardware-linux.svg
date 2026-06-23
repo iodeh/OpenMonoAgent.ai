@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="168" viewBox="0 0 860 168">
+  <defs>
+    <style>text { font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace; }</style>
+  </defs>
+
+  <!-- background -->
+  <rect width="860" height="168" rx="6" fill="#111111" stroke="#232323" stroke-width="1"/>
+
+  <!-- header row -->
+  <rect x="1" y="1" width="858" height="30" rx="5" fill="#0F0F0F"/>
+  <rect x="1" y="16" width="858" height="15" fill="#0F0F0F"/>
+  <line x1="1" y1="31" x2="859" y2="31" stroke="#232323" stroke-width="1"/>
+
+  <!-- eyebrow label -->
+  <text x="14" y="20" font-size="10" font-weight="700" fill="#A3FF66" letter-spacing="1.5">LINUX — NVIDIA GPU / CPU</text>
+  <!-- col headers -->
+  <text x="14" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">VRAM / RAM</text>
+  <text x="175" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">MODEL</text>
+  <text x="530" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">ACCURACY</text>
+  <text x="680" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">SPEED</text>
+  <line x1="1" y1="53" x2="859" y2="53" stroke="#232323" stroke-width="1"/>
+
+  <!-- row 1 -->
+  <line x1="1" y1="88" x2="859" y2="88" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="75" font-size="11" font-weight="600" fill="#A3FF66">GPU 24 GB+</text>
+  <text x="175" y="75" font-size="11" fill="#8A8A82">Qwen3.6-27B-Q4_K_M</text>
+  <text x="530" y="75" font-size="11" font-weight="600" fill="#A3FF66">Full</text>
+  <text x="680" y="75" font-size="11" fill="#8A8A82">~45–70 tok/s</text>
+
+  <!-- row 2 -->
+  <line x1="1" y1="123" x2="859" y2="123" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="110" font-size="11" fill="#6A6A62">GPU 16 GB</text>
+  <text x="175" y="110" font-size="11" fill="#6A6A62">Qwen3.6-27B-UD-IQ3_XXS</text>
+  <text x="530" y="110" font-size="11" font-weight="600" fill="#E8A838">Lower</text>
+  <text x="680" y="110" font-size="11" fill="#6A6A62">~20–42 tok/s (4060 Ti → 4080)</text>
+
+  <!-- row 3 -->
+  <line x1="1" y1="148" x2="859" y2="148" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="140" font-size="11" fill="#6A6A62">GPU 12 GB</text>
+  <text x="175" y="140" font-size="11" fill="#6A6A62">Qwen3.5-9B-Q4_K_M</text>
+  <text x="530" y="140" font-size="11" font-weight="600" fill="#E8A838">Lower</text>
+  <text x="680" y="140" font-size="11" fill="#6A6A62">~38–40 tok/s (RTX 3060)</text>
+
+  <!-- row 4 -->
+  <text x="14" y="162" font-size="11" font-weight="600" fill="#A3FF66">CPU 24 GB RAM</text>
+  <text x="175" y="162" font-size="11" fill="#8A8A82">Qwen3.6-35B-A3B-UD-Q4_K_XL</text>
+  <text x="530" y="162" font-size="11" font-weight="600" fill="#A3FF66">Full</text>
+  <text x="680" y="162" font-size="11" fill="#8A8A82">~17–20 tok/s</text>
+
+  <rect width="860" height="168" rx="6" fill="none" stroke="#232323" stroke-width="1"/>
+</svg>

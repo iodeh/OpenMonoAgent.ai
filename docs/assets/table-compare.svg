@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="320" viewBox="0 0 860 320">
+  <defs>
+    <style>
+      text { font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace; }
+    </style>
+  </defs>
+
+  <!-- background -->
+  <rect width="860" height="320" rx="6" fill="#111111" stroke="#232323" stroke-width="1"/>
+
+  <!-- header row bg -->
+  <rect x="1" y="1" width="858" height="32" rx="5" fill="#0F0F0F"/>
+  <rect x="1" y="1" width="858" height="32" fill="#0F0F0F"/>
+
+  <!-- OpenMono column highlight -->
+  <rect x="190" y="1" width="220" height="318" rx="0" fill="#A3FF6608"/>
+  <rect x="190" y="1" width="220" height="2" fill="#A3FF66"/>
+
+  <!-- header divider -->
+  <line x1="1" y1="33" x2="859" y2="33" stroke="#232323" stroke-width="1"/>
+
+  <!-- col dividers -->
+  <line x1="190" y1="1" x2="190" y2="319" stroke="#232323" stroke-width="1"/>
+  <line x1="410" y1="1" x2="410" y2="319" stroke="#232323" stroke-width="1"/>
+  <line x1="635" y1="1" x2="635" y2="319" stroke="#232323" stroke-width="1"/>
+
+  <!-- header labels -->
+  <text x="300" y="22" font-size="12" font-weight="700" fill="#A3FF66" text-anchor="middle" letter-spacing="1">OpenMono</text>
+  <text x="522" y="22" font-size="12" font-weight="700" fill="#4A4A44" text-anchor="middle" letter-spacing="1">Claude Code</text>
+  <text x="747" y="22" font-size="12" font-weight="700" fill="#4A4A44" text-anchor="middle" letter-spacing="1">OpenCode</text>
+
+  <!-- row 1 -->
+  <line x1="1" y1="68" x2="859" y2="68" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="55" font-size="11" font-weight="600" fill="#4A4A44">Inference cost</text>
+  <text x="202" y="55" font-size="11" font-weight="500" fill="#E2E2DA">Zero per token (local)</text>
+  <text x="422" y="55" font-size="11" fill="#6A6A62">Per-token billing</text>
+  <text x="647" y="55" font-size="11" fill="#6A6A62">Per-token billing</text>
+
+  <!-- row 2 -->
+  <line x1="1" y1="103" x2="859" y2="103" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="90" font-size="11" font-weight="600" fill="#4A4A44">Data privacy</text>
+  <text x="202" y="90" font-size="11" font-weight="500" fill="#E2E2DA">Fully offline capable</text>
+  <text x="422" y="90" font-size="11" fill="#6A6A62">Cloud only</text>
+  <text x="647" y="90" font-size="11" fill="#6A6A62">Depends on provider</text>
+
+  <!-- row 3 -->
+  <line x1="1" y1="138" x2="859" y2="138" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="125" font-size="11" font-weight="600" fill="#4A4A44">Default inference</text>
+  <text x="202" y="125" font-size="11" font-weight="500" fill="#E2E2DA">llama.cpp bundled, zero config</text>
+  <text x="422" y="125" font-size="11" fill="#6A6A62">Anthropic API required</text>
+  <text x="647" y="125" font-size="11" fill="#6A6A62">BYO provider, no bundled inference</text>
+
+  <!-- row 4 -->
+  <line x1="1" y1="173" x2="859" y2="173" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="160" font-size="11" font-weight="600" fill="#4A4A44">Sandboxing</text>
+  <text x="202" y="160" font-size="11" font-weight="500" fill="#E2E2DA">Docker-native</text>
+  <text x="422" y="160" font-size="11" fill="#6A6A62">Host process</text>
+  <text x="647" y="160" font-size="11" fill="#6A6A62">Host process</text>
+
+  <!-- row 5 -->
+  <line x1="1" y1="208" x2="859" y2="208" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="195" font-size="11" font-weight="600" fill="#4A4A44">Code intelligence</text>
+  <text x="202" y="195" font-size="11" font-weight="500" fill="#E2E2DA">LSP + Roslyn + MCP graph tools</text>
+  <text x="422" y="195" font-size="11" fill="#6A6A62">File reads</text>
+  <text x="647" y="195" font-size="11" fill="#6A6A62">LSP (30+ servers)</text>
+
+  <!-- row 6 -->
+  <line x1="1" y1="243" x2="859" y2="243" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="230" font-size="11" font-weight="600" fill="#4A4A44">Extensibility</text>
+  <text x="202" y="230" font-size="11" font-weight="500" fill="#E2E2DA">Playbooks (typed, composable)</text>
+  <text x="422" y="230" font-size="11" fill="#6A6A62">Skills (markdown)</text>
+  <text x="647" y="230" font-size="11" fill="#6A6A62">Plugins (TS SDK)</text>
+
+  <!-- row 7 -->
+  <line x1="1" y1="278" x2="859" y2="278" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14" y="265" font-size="11" font-weight="600" fill="#4A4A44">MCP</text>
+  <text x="202" y="265" font-size="11" font-weight="500" fill="#E2E2DA">Client (stdio)</text>
+  <text x="422" y="265" font-size="11" fill="#6A6A62">Full client</text>
+  <text x="647" y="265" font-size="11" fill="#6A6A62">Full client</text>
+
+  <!-- row 8 -->
+  <text x="14" y="300" font-size="11" font-weight="600" fill="#4A4A44">UI</text>
+  <text x="202" y="300" font-size="11" font-weight="500" fill="#E2E2DA">TUI + CLI + Mobile</text>
+  <text x="422" y="300" font-size="11" fill="#6A6A62">Web, Desktop, VS Code, CLI</text>
+  <text x="647" y="300" font-size="11" fill="#6A6A62">TUI, Desktop, Web</text>
+
+  <!-- outer border -->
+  <rect width="860" height="320" rx="6" fill="none" stroke="#232323" stroke-width="1"/>
+</svg>

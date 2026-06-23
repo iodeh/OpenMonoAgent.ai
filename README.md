@@ -103,62 +103,7 @@ openmono agent --classic    # classic scrolling terminal
 
 Most coding agents are cloud products wearing an open-source label. Your prompts, your code, and your context hit someone else's servers on every keystroke. OpenMono runs the model on your hardware — after the one-time setup, **inference costs nothing**. Your code never leaves the machine. No account. No usage dashboard. No API key.
 
-<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;">
-  <tr>
-    <th width="22%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;background:#0F0F0F;border-bottom:2px solid #232323;font-family:monospace;font-weight:700;"></th>
-    <th width="26%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#A3FF66;background:rgba(163,255,102,0.06);border-bottom:2px solid #A3FF66;font-family:monospace;font-weight:700;">OpenMono</th>
-    <th width="26%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;background:#0F0F0F;border-bottom:2px solid #232323;font-family:monospace;font-weight:700;">Claude Code</th>
-    <th width="26%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;background:#0F0F0F;border-bottom:2px solid #232323;font-family:monospace;font-weight:700;">OpenCode</th>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Inference cost</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Zero per token (local)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Per-token billing</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Per-token billing</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Data privacy</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Fully offline capable</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Cloud only</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Depends on provider</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Default inference</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">llama.cpp bundled, zero config</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Anthropic API required</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">BYO provider, no bundled inference</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Sandboxing</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Docker-native</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Host process</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Host process</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Code intelligence</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">LSP + Roslyn + MCP graph tools</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">File reads</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">LSP (30+ servers)</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Extensibility</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;"><a href="docs/PLAYBOOKS.md">Playbooks</a> (typed, composable)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Skills (markdown)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Plugins (TS SDK)</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">MCP</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Client (stdio)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Full client</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Full client</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;font-family:monospace;font-weight:600;">UI</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);font-weight:500;">TUI + CLI + Mobile</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">Web, Desktop, VS Code, CLI</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">TUI, Desktop, Web</td>
-  </tr>
-</table>
+![How it compares](docs/assets/table-compare.svg)
 
 → [Full architecture + diagram](docs/ARCHITECTURE.md) · [4 providers](docs/MODELS.md) · runs at **~45 tok/s on GPU**, ~20 tok/s on CPU
 
@@ -266,81 +211,9 @@ Attach images in chat with `@screenshot.png` or ask the agent to read any image 
 <!--  ── SUPPORTED HARDWARE ──────────────────────────────────── -->
 ## Supported Hardware
 
-<table width="100%" style="border-collapse:collapse;margin-bottom:8px;">
-  <tr><td style="padding:0 0 6px;">
-    <code style="font-size:11px;color:#A3FF66;letter-spacing:0.1em;">LINUX — NVIDIA GPU / CPU</code>
-  </td></tr>
-</table>
+![Linux hardware](docs/assets/table-hardware-linux.svg)
 
-<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;margin-bottom:16px;">
-  <tr style="background:#0F0F0F;">
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">VRAM / RAM</th>
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Model</th>
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Accuracy</th>
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Speed</th>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;font-family:monospace;">GPU 24 GB+</td>
-    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.6-27B-Q4_K_M</td>
-    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;">Full</td>
-    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;">~45–70 tok/s</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">GPU 16 GB</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.6-27B-UD-IQ3_XXS</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E8A838;border-bottom:1px solid #1A1A1A;">Lower</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">~20–42 tok/s (4060 Ti → 4080)</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">GPU 12 GB</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.5-9B-Q4_K_M</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E8A838;border-bottom:1px solid #1A1A1A;">Lower</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">~38–40 tok/s (RTX 3060)</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;font-family:monospace;">CPU 24 GB RAM</td>
-    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;font-family:monospace;">Qwen3.6-35B-A3B-UD-Q4_K_XL</td>
-    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;">Full</td>
-    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;">~17–20 tok/s</td>
-  </tr>
-</table>
-
-<table width="100%" style="border-collapse:collapse;margin-bottom:8px;">
-  <tr><td style="padding:0 0 6px;">
-    <code style="font-size:11px;color:#A3FF66;letter-spacing:0.1em;">macOS — APPLE SILICON (METAL)</code>
-  </td></tr>
-</table>
-
-<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;margin-bottom:12px;">
-  <tr style="background:#0F0F0F;">
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Unified memory</th>
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Model</th>
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Context</th>
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Speed</th>
-    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Status</th>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;font-family:monospace;">64 GB+</td>
-    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.6-35B-A3B-UD-Q4_K_XL</td>
-    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;">192k (168k w/ vision)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;">~45–48 tok/s (M5 Pro)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;">✓ Recommended</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">32 GB</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.5-9B-Q4_K_M</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">64k (48k)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">~22–27 tok/s (M1 Max)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E8A838;border-bottom:1px solid #1A1A1A;">⚠ Not encouraged</td>
-  </tr>
-  <tr>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;font-family:monospace;">16 GB</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;font-family:monospace;">Qwen3.5-9B-Q4_K_M</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">16k (12k)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">~12–16 tok/s (M4)</td>
-    <td style="padding:8px 12px;font-size:12px;color:#E8A838;">⚠ Not encouraged</td>
-  </tr>
-</table>
+![macOS hardware](docs/assets/table-hardware-macos.svg)
 
 > [!NOTE]
 > The installer detects your hardware and selects the right model automatically — no config needed. On Linux, 12 GB and 16 GB GPU cards are supported but run lower accuracy models; for best results use a 24 GB card. Linux requires Ubuntu 26.04 LTS (recommended) or 25.10.

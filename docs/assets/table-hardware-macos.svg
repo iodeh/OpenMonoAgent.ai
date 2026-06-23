@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="150" viewBox="0 0 860 150">
+  <defs>
+    <style>text { font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace; }</style>
+  </defs>
+
+  <!-- background -->
+  <rect width="860" height="150" rx="6" fill="#111111" stroke="#232323" stroke-width="1"/>
+
+  <!-- header row -->
+  <rect x="1" y="1" width="858" height="30" rx="5" fill="#0F0F0F"/>
+  <rect x="1" y="16" width="858" height="15" fill="#0F0F0F"/>
+  <line x1="1" y1="31" x2="859" y2="31" stroke="#232323" stroke-width="1"/>
+
+  <!-- eyebrow label -->
+  <text x="14" y="20" font-size="10" font-weight="700" fill="#A3FF66" letter-spacing="1.5">macOS — APPLE SILICON (METAL)</text>
+
+  <!-- col headers -->
+  <text x="14"  y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">MEMORY</text>
+  <text x="110" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">MODEL</text>
+  <text x="390" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">CONTEXT</text>
+  <text x="560" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">SPEED</text>
+  <text x="710" y="47" font-size="10" font-weight="700" fill="#4A4A44" letter-spacing="1">STATUS</text>
+  <line x1="1" y1="53" x2="859" y2="53" stroke="#232323" stroke-width="1"/>
+
+  <!-- row 1 -->
+  <line x1="1" y1="88" x2="859" y2="88" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14"  y="75" font-size="11" font-weight="600" fill="#A3FF66">64 GB+</text>
+  <text x="110" y="75" font-size="11" fill="#8A8A82">Qwen3.6-35B-A3B-UD-Q4_K_XL</text>
+  <text x="390" y="75" font-size="11" fill="#8A8A82">192k (168k w/ vision)</text>
+  <text x="560" y="75" font-size="11" fill="#8A8A82">~45–48 tok/s (M5 Pro)</text>
+  <text x="710" y="75" font-size="11" font-weight="600" fill="#A3FF66">✓ Recommended</text>
+
+  <!-- row 2 -->
+  <line x1="1" y1="118" x2="859" y2="118" stroke="#1A1A1A" stroke-width="1"/>
+  <text x="14"  y="107" font-size="11" fill="#6A6A62">32 GB</text>
+  <text x="110" y="107" font-size="11" fill="#6A6A62">Qwen3.5-9B-Q4_K_M</text>
+  <text x="390" y="107" font-size="11" fill="#6A6A62">64k (48k)</text>
+  <text x="560" y="107" font-size="11" fill="#6A6A62">~22–27 tok/s (M1 Max)</text>
+  <text x="710" y="107" font-size="11" font-weight="600" fill="#E8A838">⚠ Not encouraged</text>
+
+  <!-- row 3 -->
+  <text x="14"  y="138" font-size="11" fill="#6A6A62">16 GB</text>
+  <text x="110" y="138" font-size="11" fill="#6A6A62">Qwen3.5-9B-Q4_K_M</text>
+  <text x="390" y="138" font-size="11" fill="#6A6A62">16k (12k)</text>
+  <text x="560" y="138" font-size="11" fill="#6A6A62">~12–16 tok/s (M4)</text>
+  <text x="710" y="138" font-size="11" font-weight="600" fill="#E8A838">⚠ Not encouraged</text>
+
+  <rect width="860" height="150" rx="6" fill="none" stroke="#232323" stroke-width="1"/>
+</svg>
