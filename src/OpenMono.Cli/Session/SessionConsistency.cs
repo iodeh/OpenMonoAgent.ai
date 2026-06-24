@@ -1,21 +1,10 @@
 namespace OpenMono.Session;
 
-/// <summary>
-/// Repairs a conversation that was interrupted mid-turn so it is safe to resume.
-/// If the process died between an assistant tool-call and its tool result, the
-/// transcript would contain a dangling <c>tool_use</c> with no matching
-/// <c>tool_result</c>, which most LLM APIs reject. Repair synthesizes a placeholder
-/// result for every unanswered tool call so the model can retry the call.
-/// </summary>
 public static class SessionConsistency
 {
     public const string InterruptedToolResult =
         "Interrupted before completion. Re-issue the tool call to execute.";
 
-    /// <summary>
-    /// Repairs <paramref name="session"/>'s message list in place.
-    /// Returns the number of synthetic tool results that were added.
-    /// </summary>
     public static int Repair(SessionState session)
     {
         var (repaired, synthesized) = RepairMessages(session.Messages);
@@ -27,10 +16,6 @@ public static class SessionConsistency
         return synthesized;
     }
 
-    /// <summary>
-    /// Pure variant: returns a new list with synthetic tool results inserted for any
-    /// assistant tool call that has no matching tool-result message.
-    /// </summary>
     public static (List<Message> Messages, int Synthesized) RepairMessages(IReadOnlyList<Message> messages)
     {
         var answered = new HashSet<string>(
@@ -49,8 +34,6 @@ public static class SessionConsistency
 
             foreach (var call in calls)
             {
-                // answered.Add returns true only when the id was NOT already present
-                // (neither answered by a real tool result nor by a previous synth).
                 if (!answered.Add(call.Id))
                     continue;
 

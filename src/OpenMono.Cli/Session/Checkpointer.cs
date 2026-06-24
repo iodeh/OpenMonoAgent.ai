@@ -109,9 +109,6 @@ public sealed class Checkpointer
         if (latest is null)
             return session.Messages;
 
-        // Defend against a stale/corrupt checkpoint whose cutoff no longer fits the
-        // (possibly truncated) message list — emitting a summary with zero recent
-        // messages would resume incoherently, so fall back to the full transcript.
         if (latest.CutoffMessageIndex < 0 || latest.CutoffMessageIndex > session.Messages.Count)
             return session.Messages;
 

@@ -1,10 +1,5 @@
 namespace OpenMono.Session;
 
-/// <summary>
-/// Cheap, LLM-free derivation of human-readable session digest fields used by the
-/// resume picker (TUI and ACP). No model calls — title comes from the first user
-/// message, the latest summary reuses the most recent checkpoint.
-/// </summary>
 public static class SessionDigest
 {
     public static string DeriveTitle(IReadOnlyList<Message> messages, int maxLength = 80)

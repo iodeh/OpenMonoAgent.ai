@@ -69,9 +69,6 @@ public sealed class SessionManager
 
         var lines = await File.ReadAllLinesAsync(files[0], ct);
 
-        // Recover the session's identity from the header line so a resumed session
-        // keeps its original id/startedAt and continues appending to the SAME file
-        // (rather than forking a new file under a fresh GUID — see plan G4).
         var headerLine = lines.FirstOrDefault(l => l.Contains("\"session_id\""));
         SessionHeader? header = headerLine is not null
             ? JsonSerializer.Deserialize<SessionHeader>(headerLine, JsonOptions.Default)
@@ -99,7 +96,6 @@ public sealed class SessionManager
             }
             catch (JsonException)
             {
-                // Skip a corrupt/truncated message line rather than failing the whole load.
             }
         }
 
@@ -118,7 +114,6 @@ public sealed class SessionManager
             }
             catch (JsonException)
             {
-                // Corrupt checkpoint sidecar — resume without checkpoints (non-critical metadata).
             }
         }
 
@@ -159,14 +154,11 @@ public sealed class SessionManager
         }
         catch (JsonException)
         {
-            // Corrupt or torn index — return an empty list; it self-heals on the next save.
             return [];
         }
 
         return sessions
             .Where(s => s.WorkingDirectory == _workingDirectory)
-            // Skip orphaned index entries whose session file no longer exists, so the
-            // resume picker never offers a row that 404s on click.
             .Where(s => Directory.GetFiles(_sessionDir, $"*_{s.Id}.jsonl").Length > 0)
             .OrderByDescending(s => s.LastActivityAt)
             .ThenByDescending(s => s.StartedAt)
@@ -225,11 +217,6 @@ public sealed class SessionManager
         Todos = session.Todos,
     };
 
-    /// <summary>
-    /// Writes to a unique temp sibling file then atomically renames it over the target,
-    /// so a reader (or a crash) never observes a half-written session/index/checkpoint
-    /// file. The unique temp name keeps concurrent writers from colliding on the temp.
-    /// </summary>
     private static async Task WriteAllTextAtomicAsync(string path, string content, CancellationToken ct)
     {
         var tmp = $"{path}.{Guid.NewGuid():N}.tmp";

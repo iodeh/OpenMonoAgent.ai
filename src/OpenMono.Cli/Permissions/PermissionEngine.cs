@@ -43,12 +43,6 @@ public sealed class PermissionEngine
         _nonInteractive = nonInteractive;
     }
 
-    /// <summary>
-    /// Builds a permission engine for a sub-agent. The child cannot prompt the user
-    /// (sub-agents run on background threads with no console of their own), so any
-    /// uncovered capability is auto-denied. It inherits a snapshot of the parent's
-    /// session approvals so anything the user already allowed for the session still works.
-    /// </summary>
     public PermissionEngine CreateChildEngine(IOutputSink output, IInputReader input)
     {
         var child = new PermissionEngine(_config, output, input, nonInteractive: true);

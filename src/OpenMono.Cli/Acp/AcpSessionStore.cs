@@ -5,23 +5,12 @@ using OpenMono.Session;
 
 namespace OpenMono.Acp;
 
-/// <summary>
-/// Registry of live ACP sessions backed by the shared <see cref="SessionManager"/>
-/// store (the same jsonl + index + checkpoint format used by the TUI). The registry
-/// holds live <see cref="AcpSession"/> handles (with their pause/permission state);
-/// durable conversation state is persisted/loaded through SessionManager, so ACP and
-/// TUI sessions share one format and resume is compaction-aware.
-///
-/// Sessions never expire by default (<c>SessionTtlHours ≤ 0</c>); a positive TTL
-/// re-enables time-based purging. Legacy per-session <c>{id}.json</c> blobs from the
-/// previous store are migrated into the unified format on first construction.
-/// </summary>
 public sealed class AcpSessionStore : IDisposable
 {
     private readonly SessionManager _sessions;
     private readonly string _dir;
     private readonly ConcurrentDictionary<string, AcpSession> _live = new();
-    private readonly TimeSpan _ttl; // Timeout.InfiniteTimeSpan ⇒ never expire
+    private readonly TimeSpan _ttl;
     private readonly Timer? _reaper;
     private readonly object _ioLock = new();
     private bool _disposed;
@@ -74,8 +63,6 @@ public sealed class AcpSessionStore : IDisposable
             state = _sessions.LoadAsync(id, CancellationToken.None).GetAwaiter().GetResult();
         if (state is null) return null;
 
-        // Resume safety: repair any tool call left dangling by a mid-turn crash before
-        // the model sees the transcript again.
         SessionConsistency.Repair(state);
 
         var session = new AcpSession
@@ -89,7 +76,6 @@ public sealed class AcpSessionStore : IDisposable
         return session;
     }
 
-    /// <summary>Workspace-scoped session digests for the resume picker, newest first.</summary>
     public IReadOnlyList<SessionSummary> List(int limit = 200)
     {
         lock (_ioLock)
@@ -143,11 +129,6 @@ public sealed class AcpSessionStore : IDisposable
         return true;
     }
 
-    /// <summary>
-    /// One-time, best-effort conversion of legacy per-session <c>{id}.json</c> blobs
-    /// (written by the previous ACP store) into the unified SessionManager format.
-    /// Successfully migrated files are moved aside; unparseable ones are quarantined.
-    /// </summary>
     private void MigrateLegacyBlobs(AppConfig cfg, AcpServerSettings settings)
     {
         var legacyDir = settings.SessionsDirectory;
@@ -164,13 +145,10 @@ public sealed class AcpSessionStore : IDisposable
                 var blob = JsonSerializer.Deserialize<LegacyBlob>(json, LegacyJsonOpts);
                 if (blob is null || !IsValidId(blob.Id))
                 {
-                    // Reject empty/malformed ids so we never migrate a session that
-                    // TryGet (which enforces IsValidId) could never retrieve.
                     Quarantine(file);
                     continue;
                 }
 
-                // Skip if already migrated (a session file for this id already exists).
                 if (System.IO.Directory.GetFiles(_dir, $"*_{blob.Id}.jsonl").Length == 0)
                 {
                     var state = new SessionState
@@ -198,7 +176,6 @@ public sealed class AcpSessionStore : IDisposable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // Leave the file in place; migration is best-effort and idempotent.
             }
         }
     }
@@ -213,7 +190,6 @@ public sealed class AcpSessionStore : IDisposable
         }
         catch
         {
-            // best-effort
         }
     }
 

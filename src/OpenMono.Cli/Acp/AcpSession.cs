@@ -3,18 +3,10 @@ using OpenMono.Session;
 
 namespace OpenMono.Acp;
 
-/// <summary>
-/// In-memory live handle for an ACP session. Its durable conversation state
-/// (messages, checkpoints, todos, turn count, model) lives in <see cref="State"/>,
-/// which is persisted/loaded by <c>SessionManager</c> — the single shared store
-/// across the TUI and ACP surfaces. This class adds only the live, non-persisted
-/// concerns: the per-turn lock and the pending-pause / remembered-decision registries.
-/// </summary>
 public sealed class AcpSession
 {
     public required SessionState State { get; init; }
 
-    /// <summary>Runtime last-activity marker, used for TTL of live sessions (never expires when TTL ≤ 0).</summary>
     public DateTime LastActivityAt { get; set; }
 
     public string Id => State.Id;

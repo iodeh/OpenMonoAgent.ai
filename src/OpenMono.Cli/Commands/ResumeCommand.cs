@@ -65,8 +65,6 @@ public sealed class ResumeCommand : ICommand
             return;
         }
 
-        // Reattach the live session to the loaded one in place, keeping its identity
-        // (so subsequent saves continue the same file) and repairing any interrupted turn.
         SessionReattach.Apply(context.Session, loaded);
 
         var cpInfo = context.Session.Checkpoints.Count > 0

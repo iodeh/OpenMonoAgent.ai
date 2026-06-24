@@ -2,10 +2,6 @@ namespace OpenMono.Session;
 
 public sealed class SessionState
 {
-    // Settable so /resume can reattach the live session to a loaded session's identity
-    // in place — the TUI renderer and conversation loop cache this object by reference,
-    // so mutating identity (rather than swapping the object) keeps them all consistent
-    // and continues writing to the original session file.
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..12];
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
     public string? Model { get; set; }

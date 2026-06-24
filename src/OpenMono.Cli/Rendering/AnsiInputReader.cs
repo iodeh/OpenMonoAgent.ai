@@ -44,9 +44,6 @@ internal sealed class AnsiInputReader(
                 if (s == "O" && Console.KeyAvailable)
                     continue;
 
-                // SGR mouse report: ESC [ < Cb ; Cx ; Cy (M=press, m=release).
-                // The scroll wheel arrives as a press with bit 0x40 set; low 2 bits
-                // give direction (0=up, 1=down). Clicks/other buttons are ignored.
                 if ((ch == 'M' || ch == 'm') && s.Length > 3 && s[0] == '[' && s[1] == '<')
                 {
                     var body  = s.Substring(2, s.Length - 3);
@@ -55,13 +52,12 @@ internal sealed class AnsiInputReader(
                     if (int.TryParse(cbStr, out var cb) && (cb & 0x40) != 0)
                     {
                         var dir = cb & 0x3;
-                        if (dir == 0) return (+2, null, 0, 0); // wheel up   → line scroll
-                        if (dir == 1) return (-2, null, 0, 0); // wheel down → line scroll
+                        if (dir == 0) return (+2, null, 0, 0);
+                        if (dir == 1) return (-2, null, 0, 0);
                     }
                     return (0, null, 0, 0);
                 }
 
-                // scroll magnitude: ±1 = page (PageUp/PageDown), ±2 = line (Shift+arrows)
                 return s switch
                 {
                     "b" or "[1;3D" or "[1;5D" => (0, null, -1,  0),
@@ -79,7 +75,6 @@ internal sealed class AnsiInputReader(
         return (0, null, 0, 0);
     }
 
-    // Maps a scroll code from TryReadEscapeSequence to a paint: ±1 pages, ±2 scrolls a few lines.
     private void ApplyScroll(int scroll)
     {
         switch (scroll)

@@ -111,9 +111,6 @@ public sealed class AcpTurnRunner : IAcpEventSink
 
     private async Task DriveLoopAsync(CancellationToken ct)
     {
-        // Run directly on the session's own SessionState so checkpoints, the cutoff
-        // index, and the TokenTracker accumulate across turns (and are persisted by
-        // the endpoint after each turn) — enabling compaction-aware resume.
         var sessionState = _acpSession.State;
         sessionState.Meta.TokenTracker ??= new TokenTracker();
 
@@ -126,11 +123,9 @@ public sealed class AcpTurnRunner : IAcpEventSink
         }
         catch (PendingUserResponseException)
         {
-            // Turn paused awaiting a client response; state is already mutated in place.
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Client aborted; partial state is already in place.
         }
         catch (Exception e)
         {
