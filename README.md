@@ -103,7 +103,65 @@ openmono agent --classic    # classic scrolling terminal
 
 Most coding agents are cloud products wearing an open-source label. Your prompts, your code, and your context hit someone else's servers on every keystroke. OpenMono runs the model on your hardware — after the one-time setup, **inference costs nothing**. Your code never leaves the machine. No account. No usage dashboard. No API key.
 
-![How it compares](docs/assets/table-compare.svg)
+<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;">
+  <tr><td colspan="4" style="padding:8px 16px 6px;border-bottom:1px solid #232323;">
+    <code style="font-size:11px;color:#A3FF66;letter-spacing:0.12em;">HOW IT COMPARES</code>
+  </td></tr>
+  <tr>
+    <td width="22%" style="padding:10px 16px;border-bottom:1px solid #232323;border-right:1px solid #232323;"></td>
+    <td width="26%" style="padding:10px 16px;border-bottom:1px solid #232323;border-right:1px solid #232323;border-top:2px solid #A3FF66;"><strong style="color:#A3FF66;">OpenMono</strong></td>
+    <td width="26%" style="padding:10px 16px;border-bottom:1px solid #232323;border-right:1px solid #232323;"><code style="font-size:11px;color:#4A4A44;">Claude Code</code></td>
+    <td width="26%" style="padding:10px 16px;border-bottom:1px solid #232323;"><code style="font-size:11px;color:#4A4A44;">OpenCode</code></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Inference cost</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">Zero per token (local)</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Per-token billing</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;"><sub style="color:#6A6A62;">Per-token billing</sub></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Data privacy</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">Fully offline capable</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Cloud only</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;"><sub style="color:#6A6A62;">Depends on provider</sub></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Default inference</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">llama.cpp bundled, zero config</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Anthropic API required</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;"><sub style="color:#6A6A62;">BYO provider, no bundled inference</sub></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Sandboxing</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">Docker-native</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Host process</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;"><sub style="color:#6A6A62;">Host process</sub></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Code intelligence</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">LSP + Roslyn + MCP graph tools</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">File reads</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;"><sub style="color:#6A6A62;">LSP (30+ servers)</sub></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Extensibility</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">Playbooks (typed, composable)</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Skills (markdown)</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;"><sub style="color:#6A6A62;">Plugins (TS SDK)</sub></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">MCP</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">Client (stdio)</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Full client</sub></td>
+    <td style="padding:9px 16px;border-bottom:1px solid #1A1A1A;"><sub style="color:#6A6A62;">Full client</sub></td>
+  </tr>
+  <tr>
+    <td style="padding:9px 16px;border-right:1px solid #232323;"><sub style="color:#6A6A62;">UI</sub></td>
+    <td style="padding:9px 16px;border-right:1px solid #232323;"><sub style="color:#E2E2DA;">TUI + CLI + VS Code + Mobile</sub></td>
+    <td style="padding:9px 16px;border-right:1px solid #232323;"><sub style="color:#6A6A62;">Web, Desktop, VS Code, CLI</sub></td>
+    <td style="padding:9px 16px;"><sub style="color:#6A6A62;">TUI, Desktop, Web</sub></td>
+  </tr>
+</table>
 
 → [Full architecture + diagram](docs/ARCHITECTURE.md) · [4 providers](docs/MODELS.md) · runs at **~45 tok/s on GPU**, ~20 tok/s on CPU
 
@@ -200,6 +258,28 @@ Attach images in chat with `@screenshot.png` or ask the agent to read any image 
 
 </td>
 </tr>
+<tr>
+<td valign="top">
+
+<strong style="color:#A3FF66;">11</strong> · **Private web search & scraping**  
+Self-hosted search via SearXNG — your queries never leave the machine. Anti-bot scraping via Scrapling + Camoufox (real browser, Cloudflare bypass). Single Caddy gateway, auto-detected. Falls back to DuckDuckGo / direct fetch when the gateway is absent.
+
+`openmono setup search` · `openmono setup scraper`
+
+→ [Web services architecture](docs/ARCHITECTURE.md#inference-side-web-services-caddy-gateway)
+
+</td>
+<td valign="top">
+
+<strong style="color:#A3FF66;">12</strong> · **VS Code extension**  
+The full agent loop in your editor sidebar — streaming responses, live Markdown, file edits, bash, and permission prompts without leaving VS Code. Connects to the local agent over ACP on port `7475`. Also works in Cursor.
+
+`code --install-extension StartupHakk.openmono-agent`
+
+→ [Extension docs](docs/SETUP.md#vs-code--cursor-extension) · [Marketplace](https://marketplace.visualstudio.com/items?itemName=StartupHakk.openmono-agent)
+
+</td>
+</tr>
 </table>
 
 <div align="center">
@@ -236,57 +316,11 @@ Attach images in chat with `@screenshot.png` or ask the agent to read any image 
 | [Playbooks](docs/PLAYBOOKS.md) | YAML workflows, typed params, checkpoint/resume |
 | [graphify](docs/graphify.md) | Semantic code graph, 25+ languages |
 | [code-review-graph](docs/code-review-graph.md) | Structural call graph via MCP |
-| [VS Code / Cursor extension](https://marketplace.visualstudio.com/items?itemName=StartupHakk.openmono-agent) | Chat panel for VS Code 1.85+ and Cursor — `code --install-extension StartupHakk.openmono-agent`, then start the agent with `--acp-only --acp-port 7475` |
+| [VS Code extension](docs/SETUP.md#vs-code--cursor-extension) | Chat panel for VS Code 1.85+ · also works in Cursor · [Marketplace](https://marketplace.visualstudio.com/items?itemName=StartupHakk.openmono-agent) |
 | [Contributing](CONTRIBUTING.md) | How to contribute |
 
 > [!NOTE]
 > OpenMono is in **Public Beta**. Early access is open, and we're shipping updates fast. Try it out and tell us what you'd like to see next.
-
----
-
-## OpenMono Agent for VS Code & Cursor
-
-<div align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=StartupHakk.openmono-agent"><img src="https://img.shields.io/visual-studio-marketplace/v/StartupHakk.openmono-agent?label=VS%20Code%20Marketplace&logo=visualstudiocode&color=007ACC" alt="VS Code Marketplace Version" /></a>
-  <img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue" alt="AGPL-3.0-or-later" />
-  <img src="https://img.shields.io/badge/works%20in-VS%20Code%20%2B%20Cursor-007ACC?logo=visualstudiocode&logoColor=white" alt="VS Code + Cursor" />
-</div>
-
-> **The same local-first agent — now in your editor's sidebar.**
-
-OpenMono Agent is the editor front-end for the OpenMono coding agent: a chat panel for VS Code and Cursor that talks to the agent running on your own machine. The extension renders streaming responses and executes workspace tools right inside your editor — file reads and writes, bash, grep, patches, permission prompts — while a **local .NET agent** does the heavy lifting (the LLM, sessions, memory, MCP, and playbooks). It connects over HTTP/SSE using ACP on port `7475`, so the model and your code never leave your network. No account, no API key, no per-token meter — just the agent on your desk, answering only to you.
-
-### Install
-
-From the **VS Code Marketplace** (VS Code 1.85+ and Cursor):
-
-```bash
-code --install-extension StartupHakk.openmono-agent
-```
-
-Or install a release `.vsix` directly:
-
-```bash
-code --install-extension openmono-agent-0.6.1.vsix
-```
-
-> [!IMPORTANT]
-> The extension is the UI and workspace tool executor — it does **not** run the model. You also need the local OpenMono agent and hardware capable of running it (~24 GB VRAM on GPU, or ~24 GB RAM on CPU). The extension can auto-spawn the agent in a Docker container for convenience, or you can start it yourself with `--acp-only`.
-
-### What it does
-
-- **Chat panel in your editor** — a sidebar webview with streaming responses, live Markdown rendering, and syntax-highlighted code blocks.
-- **Workspace tools run locally, in your editor** — file reads/writes, bash, grep, and patches execute inside VS Code / Cursor, with permission prompts before anything touches your files.
-- **Local .NET agent does the rest** — the LLM, sessions, memory, MCP, and playbooks are handled by the agent (built on .NET 10) over HTTP/SSE (ACP, port `7475`).
-- **Default inference is local llama.cpp** — fully supported and offline-capable (Qwen3-class models). OpenAI / Anthropic / Ollama providers exist but are WIP.
-- **Commands** — Start Agent for Workspace, Stop Agent, Clear Session, Resume Session, Select Workspace Folder.
-- **Optional Docker auto-spawn** — let the extension launch the agent in a container, or run it manually. Docker is optional.
-
-### Links
-
-- **Marketplace** — [StartupHakk.openmono-agent](https://marketplace.visualstudio.com/items?itemName=StartupHakk.openmono-agent)
-- **Source (GitHub)** — [github.com/StartupHakk/OpenMonoAgent.ai](https://github.com/StartupHakk/OpenMonoAgent.ai)
-- **Maker** — [StartupHakk](https://startuphakk.com)
 
 ---
 
