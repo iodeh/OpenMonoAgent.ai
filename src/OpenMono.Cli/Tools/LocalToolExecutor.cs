@@ -135,26 +135,33 @@ public sealed class LocalToolExecutor : IToolExecutor
         bool allowed;
         string? reason;
 
+        Console.Error.WriteLine($"[EXEC_PERM] {tool.Name}: capabilities.Count={capabilities.Count}, AutoApproveWrites={_session.Meta.AutoApproveWrites}, IsReadOnly={tool.IsReadOnly}");
+
         // "Auto implement" for an approved plan: write/exec tools are pre-approved, so skip the
         // per-edit permission prompt. "Ask before edits" leaves AutoApproveWrites false → normal
         // prompting below. (Read-only tools are unaffected; the plan-mode gate already ran above.)
         if (_session.Meta.AutoApproveWrites && !tool.IsReadOnly)
         {
+            Console.Error.WriteLine($"[EXEC_PERM] {tool.Name}: AUTO-APPROVED (AutoApproveWrites)");
             allowed = true;
             reason = null;
         }
         else if (capabilities.Count > 0)
         {
+            Console.Error.WriteLine($"[EXEC_PERM] {tool.Name}: checking {capabilities.Count} capabilities");
             var capDecision = await _permissions.CheckCapabilitiesAsync(tool.Name, capabilities, ct);
             allowed = capDecision.Allowed;
             reason = capDecision.Reason;
+            Console.Error.WriteLine($"[EXEC_PERM] {tool.Name}: capability check result: allowed={allowed}");
         }
         else
         {
+            Console.Error.WriteLine($"[EXEC_PERM] {tool.Name}: using legacy permission check");
             var permLevel = tool.RequiredPermission(input);
             var legacyDecision = await _permissions.CheckAsync(tool.Name, input, permLevel, ct);
             allowed = legacyDecision.Allowed;
             reason = legacyDecision.Reason;
+            Console.Error.WriteLine($"[EXEC_PERM] {tool.Name}: legacy check result: allowed={allowed}");
         }
 
         if (!allowed)

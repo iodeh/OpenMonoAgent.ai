@@ -286,6 +286,80 @@ public sealed class AcpTurnRunner : IAcpEventSink
         }
     }
 
+    public async Task ResumeWithPlaybookApprovalAsync(JsonElement payload, CancellationToken ct)
+    {
+        var id = payload.GetProperty("id").GetString()
+            ?? throw new InvalidOperationException("playbook_permission_response missing `id`");
+        var decision = payload.TryGetProperty("decision", out var dEl) ? dEl.GetString() : null;
+        var allow = string.Equals(decision, "allow", StringComparison.Ordinal);
+
+        Log.Info($"[OMA_PLAYBOOK] ResumeWithPlaybookApprovalAsync: received approval id={id} decision={decision}");
+
+        var ctx = _acpSession.LookupPauseContext(id);
+        if (ctx is null)
+        {
+            Log.Error($"[OMA_PLAYBOOK] ResumeWithPlaybookApprovalAsync: pause not found id={id}");
+            throw new InvalidOperationException($"playbook_permission_response for unknown or already-resolved pause id: {id}");
+        }
+
+        if (ctx.Value.Kind != PendingResponseKind.PlaybookApproval)
+        {
+            Log.Error($"[OMA_PLAYBOOK] ResumeWithPlaybookApprovalAsync: wrong pause kind id={id} kind={ctx.Value.Kind}");
+            throw new InvalidOperationException($"pause {id} is not a PlaybookApproval pause (was {ctx.Value.Kind})");
+        }
+
+        // Resolve the pause — the awaiting RequestPlaybookApprovalAsync will return with this decision
+        Log.Info($"[OMA_PLAYBOOK] ResumeWithPlaybookApprovalAsync: resolving pause id={id}");
+        var resolved = _acpSession.TryResolvePause(id, new AcpPermissionResponse(allow));
+        Log.Info($"[OMA_PLAYBOOK] ResumeWithPlaybookApprovalAsync: pause resolved result={resolved} id={id}");
+
+        if (!resolved)
+            throw new InvalidOperationException($"failed to resolve pause id: {id}");
+
+        // Cache the approval decision so RequestPlaybookApprovalAsync finds it
+        // when the pending PlaybookTool is re-executed
+        _acpSession.RememberPermission(ctx.Value.ContextKey, allow);
+
+        // Execute the pending PlaybookTool with the approval decision.
+        // Same pattern as FileWrite: find the pending tool call, execute it,
+        // capture the result. The tool call gets ONE card with status updates:
+        // pause icon → cog → check.
+        var sessionState = BuildSessionState();
+        using var loop = _loopFactory.Create(sessionState, sink: this, interaction: _interaction);
+        try
+        {
+            try
+            {
+                await loop.ResolvePendingToolCallsAsync(allow, ct);
+            }
+            catch (PendingUserResponseException)
+            {
+                // Playbook triggered a nested pause (e.g., FileWrite permission)
+                // Keep SSE stream open for the nested pause
+                SyncBackToAcpSession(sessionState);
+                throw;
+            }
+
+            // Continue the turn: agent processes the playbook result
+            await loop.ContinueTurnAsync(ct);
+            SyncBackToAcpSession(sessionState);
+            await _writer.WriteEventAsync("done", new { });
+        }
+        catch (PendingUserResponseException)
+        {
+            SyncBackToAcpSession(sessionState);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            SyncBackToAcpSession(sessionState);
+        }
+        catch (Exception e)
+        {
+            SyncBackToAcpSession(sessionState);
+            await _writer.WriteEventAsync("error", new { message = e.Message });
+        }
+    }
+
     public void AbortPendingPauses()
     {
         _acpSession.CancelAllPending();

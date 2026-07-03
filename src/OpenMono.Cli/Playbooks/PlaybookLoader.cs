@@ -81,23 +81,27 @@ public sealed class PlaybookLoader
 
             if (parts.Length < 3)
             {
-
-                return new PlaybookDefinition
-                {
-                    Name = Path.GetFileName(baseDir),
-                    Description = content[..Math.Min(250, content.Length)],
-                    BasePath = baseDir,
-                    Scope = scope,
-                    RoleDescription = content,
-                };
+                Utils.Log.Warn($"Playbook at '{baseDir}' has no YAML frontmatter (missing '---' delimiters) — cannot declare required 'allowed-tools'. Skipping load. Add YAML frontmatter with at least 'name' and 'allowed-tools'.");
+                return null;
             }
 
             var frontmatter = YamlDeserializer.Deserialize<Dictionary<string, object>>(parts[1]);
             var body = parts[2].Trim();
+            var name = GetString(frontmatter, "name") ?? Path.GetFileName(baseDir);
+
+            var hasAllowedTools = frontmatter.TryGetValue("allowed-tools", out var allowedToolsRaw)
+                && allowedToolsRaw is List<object> allowedToolsList
+                && allowedToolsList.Count > 0;
+
+            if (!hasAllowedTools)
+            {
+                Utils.Log.Warn($"Playbook '{name}' is missing required 'allowed-tools' declaration in PLAYBOOK.md frontmatter — skipping load.");
+                return null;
+            }
 
             return new PlaybookDefinition
             {
-                Name = GetString(frontmatter, "name") ?? Path.GetFileName(baseDir),
+                Name = name,
                 Version = GetString(frontmatter, "version") ?? "1.0.0",
                 Description = GetString(frontmatter, "description") ?? body[..Math.Min(250, body.Length)],
                 Trigger = ParseEnum<TriggerMode>(GetString(frontmatter, "trigger"), TriggerMode.Manual),
@@ -105,7 +109,7 @@ public sealed class PlaybookLoader
                 UserInvocable = GetBool(frontmatter, "user-invocable", true),
                 Scope = scope,
                 ArgumentHint = GetString(frontmatter, "argument-hint"),
-                AllowedTools = GetStringList(frontmatter, "allowed-tools") is { Length: > 0 } tools ? tools : ["*"],
+                AllowedTools = GetStringList(frontmatter, "allowed-tools"),
                 ContextMode = ParseEnum<ContextMode>(GetString(frontmatter, "context-mode"), ContextMode.Selective),
                 MaxContextTokens = GetInt(frontmatter, "max-context-tokens", 3000),
                 Tags = GetStringList(frontmatter, "tags"),
@@ -203,6 +207,7 @@ public sealed class PlaybookLoader
                 Type = ParseEnum<ParameterType>(ObjStr(pd, "type"), ParameterType.String),
                 Required = pd.TryGetValue("required", out var req) && req is bool b && b,
                 Default = pd.TryGetValue("default", out var def) ? def : null,
+                Description = ObjStr(pd, "description"),
                 Hint = ObjStr(pd, "hint"),
                 Enum = ObjStrList(pd, "enum") is { Length: > 0 } e ? e : null,
                 Min = pd.TryGetValue("min", out var mn) && double.TryParse(mn?.ToString(), out var minV) ? minV : null,

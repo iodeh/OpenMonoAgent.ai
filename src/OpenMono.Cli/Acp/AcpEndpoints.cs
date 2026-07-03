@@ -149,6 +149,12 @@ public static class AcpEndpoints
                     var runner = runners.Create(session, new SseWriter(ctx.Response.Body, ctx.RequestAborted));
                     await runner.ResumeWithUserInputAsync(uinEl, ctx.RequestAborted);
                 }
+                else if (root.TryGetProperty("playbookPermission", out var pbkEl))
+                {
+                    StartSseResponse(ctx);
+                    var runner = runners.Create(session, new SseWriter(ctx.Response.Body, ctx.RequestAborted));
+                    await runner.ResumeWithPlaybookApprovalAsync(pbkEl, ctx.RequestAborted);
+                }
                 else if (root.TryGetProperty("plan_decision", out var pdEl))
                 {
                     StartSseResponse(ctx);
@@ -194,7 +200,7 @@ public static class AcpEndpoints
                         new
                         {
                             error = "invalid_body",
-                            detail = "body must contain `message`, `permission`, `user_input`, `mode`, or `abort:true`",
+                            detail = "body must contain `message`, `permission`, `playbookPermission`, `user_input`, `mode`, or `abort:true`",
                         },
                         ctx.RequestAborted);
                 }
